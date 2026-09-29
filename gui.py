@@ -64,7 +64,27 @@ def from_exc(e: ec.ExcelCryptError) -> dict:
 
 
 def file_info(p: Path) -> dict:
-    return {"name": p.name, "path": str(p), "dir": str(p.parent), "bytes": p.stat().st_size}
+    try:
+        size = p.stat().st_size
+    except OSError:  # fichier déplacé ou supprimé entre-temps
+        size = None
+    return {"name": p.name, "path": str(p), "dir": str(p.parent), "bytes": size}
+
+
+def with_suffix(p: Path, suffix: str) -> tuple[Path, dict | None]:
+    """Impose une extension. Le dialogue natif n'a confirmé l'écrasement que pour le nom tapé : si l'extension
+    change et que le fichier final existe déjà, on refuse plutôt que d'écraser sans demander."""
+    if p.suffix.lower() == suffix.lower():
+        return p, None
+    q = p.with_suffix(suffix)
+    if q.exists():
+        return q, error("file_exists", f"{q.name} existe déjà : choisissez un autre nom.", name=q.name)
+    return q, None
+
+
+def is_output_of(p: Path, kind: str) -> bool:
+    """Fichier produit par ExcelCrypt (toutes langues confondues) : exclu des lots pour ne pas le retraiter."""
+    return any(p.stem.endswith("_" + t[kind]) for t in DIALOG_TEXT.values())
 
 
 class Api:
@@ -84,6 +104,7 @@ class Api:
         self._lang: str | None = None       # None = premier lancement : la page demande la langue
         self._preview_vault: ec.Vault | None = None
         self._busy = threading.Lock()
+        self._vault_count: tuple = (None, 0)  # (signature du coffre, nombre d'entrées) pour get_state
         self._load_settings()
         self._load_key()
 
@@ -143,8 +164,12 @@ class Api:
                  "count": 0, "ok": True}
         if self._keys and vault["exists"]:
             try:
-                vault["count"] = len(ec.Vault(self._vault_path, self._keys).entries)
-            except ec.ExcelCryptError:
+                st = self._vault_path.stat()
+                sig = (str(self._vault_path), st.st_mtime_ns, st.st_size, self._keys)
+                if self._vault_count[0] != sig:
+                    self._vault_count = (sig, len(ec.Vault(self._vault_path, self._keys).entries))
+                vault["count"] = self._vault_count[1]
+            except (ec.ExcelCryptError, OSError):
                 vault["ok"] = False
         return {
             "platform": sys.platform,
@@ -216,20 +241,31 @@ class Api:
         """Ajoute, change ou retire (mot de passe vide) le mot de passe. La clé elle-même ne change pas."""
         if not self._keys:
             return error("no_key", "Aucune clé chargée.")
-        ec.write_key(self._key_path, self._keys.master, password or None)
+        try:
+            ec.write_key(self._key_path, self._keys.master, password or None)
+        except OSError:
+            return error("write_denied", f"Impossible d'écrire {self._key_path.name}.", name=self._key_path.name)
         return {"ok": True, "state": self.get_state()}
 
     def new_key(self, password: str = "") -> dict:
         p = self._save_dialog(ec.DEFAULT_KEY, str(self._key_path.parent), self._file_types("key")[:1])
         if not p:
             return {"cancelled": True}
-        if p.suffix != ".key":
-            p = p.with_suffix(".key")
-        ec.generate_key(p, force=True, password=password or None)
+        p, err = with_suffix(p, ".key")
+        if err:
+            return err
+        try:
+            ec.generate_key(p, force=True, password=password or None)
+        except OSError:
+            return error("write_denied", f"Impossible d'écrire {p.name}.", name=p.name)
         self._key_path = p
         if self._vault_path.exists():
-            # un coffre existant appartient à l'ancienne clé : on en crée un nouveau à côté
-            self._vault_path = p.with_suffix(".vault")
+            # Un coffre existant appartient à une autre clé : il en faut un neuf, sans reprendre
+            # un <clé>.vault déjà présent (créé avec une clé précédente, il serait illisible).
+            v, n = p.with_suffix(".vault"), 2
+            while v.exists():
+                v, n = p.with_name(f"{p.stem} ({n}).vault"), n + 1
+            self._vault_path = v
         self._load_key(password or None)
         self._save_settings()
         return {"ok": True, "state": self.get_state()}
@@ -238,7 +274,9 @@ class Api:
         p = self._save_dialog(self._vault_path.name, str(self._vault_path.parent), self._file_types("vault"))
         if not p:
             return {"cancelled": True}
-        self._vault_path = p if p.suffix == ".vault" else p.with_suffix(".vault")
+        if p.suffix.lower() != ".vault":
+            p = p.with_suffix(".vault")  # ouvrir un coffre existant est voulu ici : pas de refus si q existe
+        self._vault_path = p
         self._preview_vault = None
         self._save_settings()
         return {"ok": True, "state": self.get_state()}
@@ -269,7 +307,11 @@ class Api:
         return {"ok": True, "profiles": self.list_profiles()}
 
     def delete_profile(self, name: str) -> dict:
-        self._write_profiles([p for p in self._profiles() if p["name"] != name])
+        # même règle que save_profile : les noms de profils ne tiennent pas compte de la casse
+        try:
+            self._write_profiles([p for p in self._profiles() if p["name"].casefold() != str(name).casefold()])
+        except OSError:
+            return error("write_denied", f"Impossible d'écrire {PROFILES.name}.", name=PROFILES.name)
         return {"ok": True, "profiles": self.list_profiles()}
 
     # --------------------------------------------------------- lecture ------
@@ -314,6 +356,16 @@ class Api:
                 "rows": [[ec.value_as_text(r[i] if i < len(r) else None) for i in range(ncols)] for r in rows],
             })
         return {"file": file_info(p) | {"ext": p.suffix.lower()}, "sheets": sheets}
+
+    def check_regexes(self, patterns: list) -> dict:
+        """Valide les regex avec le moteur qui les exécutera (syntaxe Python, pas JS) : {motif: message}."""
+        errors = {}
+        for p in patterns or []:
+            try:
+                re.compile(str(p))
+            except re.error as e:
+                errors[str(p)] = str(e)
+        return errors
 
     def parse_refs(self, sheet: str, text: str) -> dict:
         """Valide une saisie de plages (B5, A2:C40, 12-30, D:F, nom de colonne) pour la feuille donnée."""
@@ -427,16 +479,19 @@ class Api:
         if not self._file:
             return error("no_file", "Aucun fichier ouvert.")
         src = self._file
-        out = self._save_dialog(ec.default_output(src, self._t["enc"]).name, str(src.parent))
-        if not out:
-            return {"cancelled": True}
-        if out.suffix.lower() != src.suffix.lower():
-            out = out.with_suffix(src.suffix)
-        if out.resolve() == src.resolve():
-            return error("same_output", "Choisissez un fichier de sortie différent de l'original.")
         literals, detectors, errors, select = self._run_options(selection, opts)
         if errors:
             return error("regex_invalid", "Regex invalide : " + ", ".join(errors), pattern=", ".join(errors))
+        if self._busy.locked():
+            return error("busy", "Une opération est déjà en cours.")
+        out = self._save_dialog(ec.default_output(src, self._t["enc"]).name, str(src.parent))
+        if not out:
+            return {"cancelled": True}
+        out, err = with_suffix(out, src.suffix)
+        if err:
+            return err
+        if out.resolve() == src.resolve():
+            return error("same_output", "Choisissez un fichier de sortie différent de l'original.")
         if not self._busy.acquire(blocking=False):
             return error("busy", "Une opération est déjà en cours.")
         try:
@@ -464,6 +519,8 @@ class Api:
             return error("no_key", "Aucune clé chargée.")
         if not self._vault_path.exists():
             return error("vault_missing", f"Coffre introuvable : {self._vault_path.name}.", name=self._vault_path.name)
+        if self._busy.locked():
+            return error("busy", "Une opération est déjà en cours.")
         src = Path(path) if path else self._open_dialog()
         if not src:
             return {"cancelled": True}
@@ -474,8 +531,11 @@ class Api:
         out = self._save_dialog(ec.default_output(src, self._t["dec"]).name, str(src.parent))
         if not out:
             return {"cancelled": True}
-        if out.suffix.lower() != src.suffix.lower():
-            out = out.with_suffix(src.suffix)
+        out, err = with_suffix(out, src.suffix)
+        if err:
+            return err
+        if out.resolve() == src.resolve():
+            return error("same_output", "Choisissez un fichier de sortie différent de l'original.")
         if not self._busy.acquire(blocking=False):
             return error("busy", "Une opération est déjà en cours.")
         try:
@@ -494,12 +554,13 @@ class Api:
                 "unknownCount": len(res["unknown"]), "source": file_info(src), "output": file_info(out)}
 
     # ------------------------------------------------------ traitement par lot --
-    def _pick_batch_folders(self):
+    def _pick_batch_folders(self, kind: str):
         src = self._folder_dialog(str(self._file.parent) if self._file else "")
         if not src:
             return None, None, []
         files = sorted(p for p in src.iterdir()
-                       if p.is_file() and p.suffix.lower() in SUPPORTED - {".txt"} and not p.name.startswith(("~$", ".")))
+                       if p.is_file() and p.suffix.lower() in SUPPORTED - {".txt"} and not p.name.startswith(("~$", "."))
+                       and not is_output_of(p, kind))
         if not files:
             return src, None, []
         dst = self._folder_dialog(str(src))
@@ -509,10 +570,10 @@ class Api:
         """Protège tous les fichiers d'un dossier avec un profil (colonnes retrouvées par leur nom)."""
         if not self._keys:
             return error("no_key", "Aucune clé chargée.")
-        profile = next((p for p in self._profiles() if p["name"] == profile_name), None)
+        profile = next((p for p in self._profiles() if p["name"].casefold() == str(profile_name).casefold()), None)
         if not profile:
             return error("profile_missing", f"Profil introuvable : {profile_name}", name=profile_name)
-        src, dst, files = self._pick_batch_folders()
+        src, dst, files = self._pick_batch_folders("enc")
         if not src or (files and not dst):
             return {"cancelled": True}
         if not files:
@@ -555,7 +616,7 @@ class Api:
             return error("no_key", "Aucune clé chargée.")
         if not self._vault_path.exists():
             return error("vault_missing", f"Coffre introuvable : {self._vault_path.name}.", name=self._vault_path.name)
-        src, dst, files = self._pick_batch_folders()
+        src, dst, files = self._pick_batch_folders("dec")
         if not src or (files and not dst):
             return {"cancelled": True}
         if not files:
@@ -578,7 +639,7 @@ class Api:
             self._window.evaluate_js(f"window.onBatchProgress({len(files)}, {len(files)}, '')")
         finally:
             self._busy.release()
-        return {"ok": True, "kind": "decrypt", "results": results, "folder": str(dst)}
+        return {"ok": True, "kind": "decrypt", "results": results, "folder": str(dst), "state": self.get_state()}
 
 
 def main():

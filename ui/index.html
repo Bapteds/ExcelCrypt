@@ -816,8 +816,8 @@ const I18N = {
     maskHeaders: "Masquer aussi les noms de colonnes", maskHeadersSub: "L'en-tête devient un jeton, restauré au retour",
     manTitle: "Lignes et cellules", removeAll: "Tout retirer", rangeLabel: "Ajouter une plage", add: "Ajouter",
     rangeHelp: "Cellule, zone, lignes (12-30), colonnes (D:F) ou nom de colonne. Pratique pour les lignes au-delà de l'aperçu.",
-    detectTitle: "Détecter dans tout le texte", emails: "Adresses e-mail", emailsEx: "camille.martin@exemple.fr",
-    phones: "Téléphones (FR)", phonesDe: "Téléphones (DE)", valuesLabel: "Valeurs précises", valuesPh: "ex. Stadtwerke, Weber… puis Entrée",
+    detectTitle: "Détecter dans tout le texte", emailsEx: "camille.martin@exemple.fr",
+    valuesLabel: "Valeurs précises", valuesPh: "ex. Stadtwerke, Weber… puis Entrée",
     valuesHelp: "Masquées partout où elles apparaissent, même au milieu d'une phrase.",
     regexLabel: "Motifs regex", advanced: "(avancé)", regexPh: "ex. FR\\d{12} puis Entrée",
     encrypt: "Protéger et enregistrer",
@@ -851,7 +851,7 @@ const I18N = {
     rowsTotal: (n) => `${fmt(n)} ligne${fr_s(n)}`,
     sumCols: (n, e) => `${n} colonne${fr_s(n)} · ≈ ${fmt(e)} valeurs`,
     sumRows: (n) => `${fmt(n)} ligne${fr_s(n)}`, sumCells: (n) => `${fmt(n)} cellule${fr_s(n)}`,
-    sumHeaders: "Noms de colonnes", sumEmails: "E-mails", sumPhones: "Téléphones FR", sumPhonesDe: "Téléphones DE",
+    sumHeaders: "Noms de colonnes",
     sumValues: (n) => `${n} valeur${fr_s(n)}`, sumRegex: (n) => `${n} regex`,
     sumEmpty: "Sélectionnez des colonnes, lignes, cellules ou une détection.",
     suggestNone: "Aucune colonne sensible évidente sur cette feuille.",
@@ -905,6 +905,8 @@ const I18N = {
     err_vault_missing: (p) => `Coffre introuvable : ${p.name}. Sélectionnez celui utilisé au chiffrement.`,
     err_no_key: "Aucune clé chargée.", err_no_file: "Aucun fichier ouvert.",
     err_same_output: "Choisissez un fichier de sortie différent de l'original.",
+    err_file_exists: (p) => `${p.name} existe déjà : choisissez un autre nom.`,
+    save: "Enregistrer",
     err_busy: "Une opération est déjà en cours.",
     err_write_denied: (p) => `Impossible d'écrire ${p.name} : le fichier est peut-être ouvert dans Excel.`,
     err_read_failed: (p) => `Lecture impossible : ${p.detail}`,
@@ -984,8 +986,8 @@ const I18N = {
     maskHeaders: "Auch Spaltennamen maskieren", maskHeadersSub: "Die Überschrift wird zum Token und später wiederhergestellt",
     manTitle: "Zeilen und Zellen", removeAll: "Alle entfernen", rangeLabel: "Bereich hinzufügen", add: "Hinzufügen",
     rangeHelp: "Zelle, Bereich, Zeilen (12-30), Spalten (D:F) oder Spaltenname. Praktisch für Zeilen außerhalb der Vorschau.",
-    detectTitle: "Im gesamten Text erkennen", emails: "E-Mail-Adressen", emailsEx: "lukas.weber@beispiel.de",
-    phones: "Telefonnummern (FR)", phonesDe: "Telefonnummern (DE)", valuesLabel: "Bestimmte Werte", valuesPh: "z. B. Stadtwerke, Weber… dann Enter",
+    detectTitle: "Im gesamten Text erkennen", emailsEx: "lukas.weber@beispiel.de",
+    valuesLabel: "Bestimmte Werte", valuesPh: "z. B. Stadtwerke, Weber… dann Enter",
     valuesHelp: "Überall maskiert, wo sie vorkommen, auch mitten im Satz.",
     regexLabel: "Regex-Muster", advanced: "(erweitert)", regexPh: "z. B. DE\\d{20} dann Enter",
     encrypt: "Schützen und speichern",
@@ -1019,7 +1021,7 @@ const I18N = {
     rowsTotal: (n) => `${fmt(n)} ${n === 1 ? "Zeile" : "Zeilen"}`,
     sumCols: (n, e) => `${n} ${n === 1 ? "Spalte" : "Spalten"} · ≈ ${fmt(e)} Werte`,
     sumRows: (n) => `${fmt(n)} ${n === 1 ? "Zeile" : "Zeilen"}`, sumCells: (n) => `${fmt(n)} ${n === 1 ? "Zelle" : "Zellen"}`,
-    sumHeaders: "Spaltennamen", sumEmails: "E-Mails", sumPhones: "Telefon FR", sumPhonesDe: "Telefon DE",
+    sumHeaders: "Spaltennamen",
     sumValues: (n) => `${n} ${n === 1 ? "Wert" : "Werte"}`, sumRegex: (n) => `${n} Regex`,
     sumEmpty: "Wählen Sie Spalten, Zeilen, Zellen oder eine Erkennung.",
     suggestNone: "Keine offensichtlich sensible Spalte in diesem Blatt.",
@@ -1073,6 +1075,8 @@ const I18N = {
     err_vault_missing: (p) => `Tresor nicht gefunden: ${p.name}. Wählen Sie den beim Verschlüsseln verwendeten Tresor.`,
     err_no_key: "Kein Schlüssel geladen.", err_no_file: "Keine Datei geöffnet.",
     err_same_output: "Wählen Sie eine andere Ausgabedatei als das Original.",
+    err_file_exists: (p) => `${p.name} existiert bereits: Wählen Sie einen anderen Namen.`,
+    save: "Speichern",
     err_busy: "Es läuft bereits ein Vorgang.",
     err_write_denied: (p) => `${p.name} kann nicht geschrieben werden: Die Datei ist möglicherweise in Excel geöffnet.`,
     err_read_failed: (p) => `Lesen nicht möglich: ${p.detail}`,
@@ -1146,8 +1150,8 @@ const I18N = {
     maskHeaders: "Also mask column names", maskHeadersSub: "The header becomes a token, restored on return",
     manTitle: "Rows and cells", removeAll: "Remove all", rangeLabel: "Add a range", add: "Add",
     rangeHelp: "Cell, area, rows (12-30), columns (D:F) or column name. Handy for rows beyond the preview.",
-    detectTitle: "Detect in all text", emails: "Email addresses", emailsEx: "anna.schmidt@example.com",
-    phones: "Phone numbers (FR)", phonesDe: "Phone numbers (DE)", valuesLabel: "Specific values", valuesPh: "e.g. Stadtwerke, Weber… then Enter",
+    detectTitle: "Detect in all text", emailsEx: "anna.schmidt@example.com",
+    valuesLabel: "Specific values", valuesPh: "e.g. Stadtwerke, Weber… then Enter",
     valuesHelp: "Masked wherever they appear, even mid-sentence.",
     regexLabel: "Regex patterns", advanced: "(advanced)", regexPh: "e.g. FR\\d{12} then Enter",
     encrypt: "Protect and save",
@@ -1181,7 +1185,7 @@ const I18N = {
     rowsTotal: (n) => `${fmt(n)} row${en_s(n)}`,
     sumCols: (n, e) => `${n} column${en_s(n)} · ≈ ${fmt(e)} values`,
     sumRows: (n) => `${fmt(n)} row${en_s(n)}`, sumCells: (n) => `${fmt(n)} cell${en_s(n)}`,
-    sumHeaders: "Column names", sumEmails: "Emails", sumPhones: "Phones FR", sumPhonesDe: "Phones DE",
+    sumHeaders: "Column names",
     sumValues: (n) => `${n} value${en_s(n)}`, sumRegex: (n) => `${n} regex`,
     sumEmpty: "Select columns, rows, cells or a detection.",
     suggestNone: "No obviously sensitive column on this sheet.",
@@ -1235,6 +1239,8 @@ const I18N = {
     err_vault_missing: (p) => `Vault not found: ${p.name}. Select the one used for encryption.`,
     err_no_key: "No key loaded.", err_no_file: "No file open.",
     err_same_output: "Choose an output file different from the original.",
+    err_file_exists: (p) => `${p.name} already exists: choose another name.`,
+    save: "Save",
     err_busy: "An operation is already running.",
     err_write_denied: (p) => `Cannot write ${p.name}: the file may be open in Excel.`,
     err_read_failed: (p) => `Cannot read the file: ${p.detail}`,
@@ -1304,7 +1310,7 @@ const S = {
   selection: {},             // nom de feuille -> { cols, rows, cells, ranges }
   opts: { detectors: [], maskHeaders: true, propagate: true, readable: false, values: [], regexes: [] },
   profiles: [], profile: "",
-  scanClean: null,
+  scanClean: null, findings: [],
   view: "original",
   aiRows: null, aiHeader: null,
   regexErrors: {},
@@ -1319,6 +1325,7 @@ const locale = () => LANGS.find((l) => l.code === LANG).locale;
 const fmt = (n) => Number(n).toLocaleString(locale());
 /* Taille de fichier : unités françaises (o, Ko, Mo) ou internationales (B, KB, MB) */
 function fmtSize(b) {
+  if (b == null) return "—";
   const units = LANG === "fr" ? ["o", "Ko", "Mo", "Go"] : ["B", "KB", "MB", "GB"];
   let i = 0;
   while (b >= 1024 && i < units.length - 1) { b /= 1024; i++; }
@@ -1326,7 +1333,6 @@ function fmtSize(b) {
 }
 const icon = (id, cls = "") => `<svg class="i ${cls}"><use href="#i-${id}"/></svg>`;
 const flag = (code, cls = "") => `<svg class="flag ${cls}"><use href="#f-${code}"/></svg>`;
-const TOKEN_RE = /ENC_[0-9a-f]{16}/i;
 let api = null;
 
 function t(key, ...args) {
@@ -1335,7 +1341,7 @@ function t(key, ...args) {
 }
 /* Message d'erreur venant de Python : traduit via son code, sinon texte d'origine */
 function errText(res) {
-  const v = res.code && I18N[LANG]["err_" + res.code];
+  const v = res.code && (I18N[LANG]["err_" + res.code] ?? I18N.fr["err_" + res.code]);
   if (!v) return res.error;
   return typeof v === "function" ? v(res.params || {}) : v;
 }
@@ -1470,7 +1476,9 @@ async function pickAndLoad() {
 }
 async function loadFile(path, headerRow) {
   showBusy(t("reading"), null);
-  const res = await api.load(path, headerRow);
+  S.busy = true;
+  let res;
+  try { res = await api.load(path, headerRow); } finally { S.busy = false; }
   closeModal();
   if (res.error) return errorModal(t("openFailed"), errText(res));
   const sameFile = S.file && S.file.path === res.file.path;
@@ -1821,6 +1829,7 @@ async function addRange() {
 $("#in-range").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); addRange(); } });
 
 function toggleOpt(k) {
+  pushHistory();
   S.opts[k] = !S.opts[k];
   syncOpts();
   renderSummary(); refreshAi();
@@ -1861,20 +1870,28 @@ function setupChips(key, inputId) {
     if ((e.key === "Enter" || e.key === ",") && input.value.trim()) {
       e.preventDefault();
       const v = input.value.trim();
-      if (!S.opts[key].includes(v)) S.opts[key].push(v);
+      if (!S.opts[key].includes(v)) { pushHistory(); S.opts[key].push(v); }
       input.value = "";
       if (key === "regexes") validateRegex();
       renderChips(key); renderSummary(); refreshAi();
     } else if (e.key === "Backspace" && !input.value && S.opts[key].length) {
-      S.opts[key].pop(); renderChips(key); renderSummary(); refreshAi();
+      pushHistory(); S.opts[key].pop(); if (key === "regexes") validateRegex(); renderChips(key); renderSummary(); refreshAi();
     }
   });
 }
+let regexSeq = 0;
 function validateRegex() {
   S.regexErrors = {};
   for (const r of S.opts.regexes) { try { new RegExp(r); } catch (e) { S.regexErrors[r] = e.message; } }
+  // Les syntaxes JS et Python diffèrent ((?P<nom>…), \A, \Z…) : Python tranche, puisque c'est lui qui les applique.
+  const seq = ++regexSeq, pats = [...S.opts.regexes];
+  api?.check_regexes(pats).then((errs) => {
+    if (seq !== regexSeq) return;
+    S.regexErrors = errs || {};
+    renderChips("regexes"); renderSummary();
+  });
 }
-function removeChip(key, i) { S.opts[key].splice(i, 1); if (key === "regexes") validateRegex(); renderChips(key); renderSummary(); refreshAi(); }
+function removeChip(key, i) { pushHistory(); S.opts[key].splice(i, 1); if (key === "regexes") validateRegex(); renderChips(key); renderSummary(); refreshAi(); }
 function renderChips(key) {
   const box = key === "values" ? $("#chips-values") : $("#chips-regex");
   box.querySelectorAll(".chip").forEach((c) => c.remove());
@@ -2137,6 +2154,7 @@ function renderDetectors() {
   }).join("")}</div>`).join("");
 }
 function toggleDetector(k) {
+  pushHistory();
   const d = S.opts.detectors, i = d.indexOf(k);
   i >= 0 ? d.splice(i, 1) : d.push(k);
   renderDetectors(); renderSummary(); refreshAi();
@@ -2225,7 +2243,7 @@ function passwordModal() {
       <div class="help" style="margin-top:-8px">${t("pwForgot")}</div>
       <div class="field-err" id="pw-err" role="alert" hidden></div>
     </div>
-    <div class="modal-f"><button class="btn" onclick="openKeyModal()">${t("cancel")}</button><button class="btn primary" onclick="savePassword()">${icon("lock", "sm")}${t("saveProfile")}</button></div>`);
+    <div class="modal-f"><button class="btn" onclick="openKeyModal()">${t("cancel")}</button><button class="btn primary" onclick="savePassword()">${icon("lock", "sm")}${t("save")}</button></div>`);
   $("#pw-new").focus();
 }
 async function savePassword() {

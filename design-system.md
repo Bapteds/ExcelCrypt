@@ -1,3 +1,5 @@
+> ⚠️ **ExcelCrypt** : ce document provient d'un autre projet DIVE (plateforme web CFD). Les principes et la charte restent valables ; pour ce qui est propre à ExcelCrypt (utilisateurs, écrans, stack), voir `brain/design/ui.md`, qui prime en cas de contradiction.
+
 # Design system · DIVE Turbinen (visual + component contract)
 
 > Single source of truth for the look & feel of the app. Synthesised from the mandatory skill sequence

@@ -5,7 +5,26 @@ Le projet n'est pas sous git : **chaque modification notable doit être ajoutée
 
 ## [Non publié]
 
+### Corrigé
+- 2026-09-29 — `excelcrypt.py` : `encrypt_file` enregistre le coffre **avant** le fichier de sortie (plus de jetons irrécupérables si l'écriture du coffre échoue).
+- 2026-09-29 — `excelcrypt.py` : `encrypt_file` et `decrypt_file` refusent d'écraser le fichier source (`same_output`).
+- 2026-09-29 — `excelcrypt.py` : `mask_text` protège les jetons existants et insérés ; un littéral ou une regex (« ENC », chiffres…) ne peut plus corrompre un jeton.
+- 2026-09-29 — `excelcrypt.py` : les feuilles restaurées qui prendraient le nom d'une feuille existante sont suffixées ` (2)` (Excel refusait l'enregistrement).
+- 2026-09-29 — `excelcrypt.py` : `load_key` signale un chemin de clé mal tapé (`key_missing`) au lieu de « Clé invalide » ; `$EXCELCRYPT_PASSWORD` vaut aussi pour une clé protégée passée par `$EXCELCRYPT_KEY`.
+- 2026-09-29 — `gui.py` : `new_key`, `set_key_password`, `delete_profile` renvoient `write_denied` au lieu de lever une exception ; `file_info` tolère un fichier disparu.
+- 2026-09-29 — `gui.py` : `encrypt` / `decrypt` vérifient regex et verrou **avant** d'ouvrir le dialogue d'enregistrement.
+- 2026-09-29 — `gui.py` : extension imposée sans écrasement silencieux (`with_suffix`, nouvelle erreur `file_exists`) ; `decrypt` refuse aussi `same_output`.
+- 2026-09-29 — `gui.py` : `new_key` ne réutilise plus un `.vault` appartenant à une autre clé.
+- 2026-09-29 — `gui.py` : noms de profils insensibles à la casse partout ; les lots ignorent les sorties d'un lot précédent (`is_output_of`) ; `batch_decrypt` renvoie `state`.
+- 2026-09-29 — `gui.py` : `get_state` ne déchiffre le coffre que s'il a changé (cache).
+- 2026-09-29 — `ui/index.html` : ⌘Z annule aussi les changements d'options (détections, valeurs, regex, interrupteurs), qui sont désormais historisés.
+- 2026-09-29 — `ui/index.html` : les regex sont validées par Python (`api.check_regexes`), la syntaxe réellement appliquée.
+- 2026-09-29 — `ui/index.html` : `errText` retombe sur le français comme `t()` ; lecture de fichier non interruptible par Échap ; libellé « Enregistrer » dédié pour le mot de passe ; taille inconnue affichée « — ».
+- 2026-09-29 — `ui/index.html` : code mort supprimé (`TOKEN_RE`, clés i18n `emails`, `phones`, `phonesDe`, `sumEmails`, `sumPhones`, `sumPhonesDe`) ; `S.findings` déclaré.
+
 ### Ajouté
+- 2026-09-29 — `gui.py` : méthode `check_regexes` exposée à la page.
+- 2026-09-29 — Dépôt git (`main`), `.gitignore` complété (`.DS_Store`, `*.tmp`).
 - 2026-09-29 — Dossier `brain/` : `INDEX.md`, `CHANGELOG.md`, `design/` (architecture, produit, sécurité, interface), une fiche par fichier dans `files/`, et `CLAUDE.md` à la racine.
 
 ## [0.1.0] — 2026-09-29

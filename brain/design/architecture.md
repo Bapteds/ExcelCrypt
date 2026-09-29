@@ -6,7 +6,7 @@
 │ JS pur, sans framework. État global S, i18n fr/de/en, 4 vues, modale   │
 │ unique. Ne voit JAMAIS la clé ni les valeurs du coffre.                │
 └──────────────┬──────────────────────────────────▲─────────────────────┘
-   window.pywebview.api.X(...)  (20 méthodes)      │ evaluate_js :
+   window.pywebview.api.X(...)  (21 méthodes)      │ evaluate_js :
    → Promise<dict> | {error, code, params}         │ onTaskStart, onTaskProgress,
                │                                    │ onBatchProgress, onFileDropped
 ┌──────────────▼──────────────── gui.py ───────────┴─────────────────────┐
@@ -49,10 +49,12 @@ Le moteur lève `ExcelCryptError(message_fr, code, **params)`. `gui.py` renvoie 
 Entrée/sortie : `.xlsx`, `.xlsm` (VBA conservé), `.csv`, `.tsv`, `.txt` (`EXCEL_EXT`, `CSV_EXT`, `excelcrypt.py:84-85` ; le lot de la GUI exclut `.txt`). `.xls` refusé (`xls_unsupported`). Sorties : `<nom>_chiffre.<ext>` et `<nom>_dechiffre.<ext>` (`default_output`).
 Clé, coffre : voir `files/excelcrypt.key.md`, `files/excelcrypt.vault.md`, `design/security.md`.
 
-## Dette connue (relevée pendant la documentation)
-- `encrypt_file` écrit la sortie **avant** le coffre, et rien n'empêche `out == path`.
-- `gui.py` : certaines méthodes laissent passer des exceptions (`new_key`, `set_key_password`, `delete_profile`) ; la Promise JS est alors rejetée au lieu de recevoir `{error, code}`.
-- `gui.py` : `encrypt` ouvre le dialogue d'enregistrement avant de vérifier regex et verrou.
-- `ui/index.html` : ⌘Z restaure aussi les options sans que leur modification ait été historisée ; code mort (`TOKEN_RE`, clés i18n `emails`/`phones`…).
-- Regex validées en syntaxe JS côté page, exécutées en syntaxe Python côté moteur.
-- `product.md` et `design-system.md` (racine) viennent d'un autre projet DIVE (voir `design/product.md`, `design/ui.md`).
+## Limites connues (choix assumés, non corrigés)
+- Un alias lisible (`CONTACT_0042`) déjà présent dans une cellule d'entrée est re-tokenisé : `is_token` ne reconnaît que `ENC_…`, car un alias ressemble à du texte ordinaire (`ORDER_2024`).
+- CSV : tout est texte, donc `"12"` (CSV) et `12` (Excel) donnent deux jetons différents.
+- `scan_file` ignore la ligne d'en-tête et les formules.
+- Polices Inter / JetBrains Mono non embarquées (repli sur les polices système).
+- `logo.svg` existe en double (racine et `ui/`).
+
+## Dette corrigée (branche `fix/dette-connue`, 2026-09-29)
+Voir `brain/CHANGELOG.md` § Corrigé : ordre coffre → fichier, refus d'écraser l'original, jetons protégés dans `mask_text`, doublons de feuilles, erreurs `gui.py` toujours renvoyées en `{error, code}`, contrôles avant dialogues, extensions sans écrasement silencieux, lots qui ne retraitent pas leurs sorties, cache du compteur de coffre, annulation des options, validation des regex par Python, code mort supprimé.

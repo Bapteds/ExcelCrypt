@@ -473,9 +473,12 @@ def generate_key(path: Path, force: bool = False, password: str | None = None) -
 def load_key(key_arg: str | None, password: str | None = None) -> Keys:
     """Clé pour la ligne de commande. Mot de passe : argument, $EXCELCRYPT_PASSWORD, ou saisie masquée."""
     if key_arg and not Path(key_arg).exists():
-        return Keys.from_text(key_arg, password)
+        # Un chemin mal tapé ne doit pas être lu comme une clé base64 (message « Clé invalide » trompeur).
+        if os.sep in key_arg or "/" in key_arg or Path(key_arg).suffix.lower() == ".key":
+            raise ExcelCryptError(f"Fichier clé introuvable : {key_arg}", "key_missing", path=key_arg)
+        return Keys.from_text(key_arg, password or os.environ.get(PASSWORD_ENV))
     if not key_arg and os.environ.get(KEY_ENV):
-        return Keys.from_text(os.environ[KEY_ENV], password)
+        return Keys.from_text(os.environ[KEY_ENV], password or os.environ.get(PASSWORD_ENV))
     path = Path(key_arg) if key_arg else Path(DEFAULT_KEY)
     if not path.exists():
         raise ExcelCryptError(f"Aucune clé trouvée. Lancez 'keygen', passez -k <fichier.key> "
@@ -673,15 +676,26 @@ class Tokenizer:
     def mask_text(self, text: str, literals: list[str], detectors: list[Detector],
                   propagation: Propagation | None = None) -> str:
         """Remplace, à l'intérieur d'un texte, les valeurs/motifs ciblés par des jetons."""
+        # Chaque jeton (déjà présent ou inséré ici) est mis de côté derrière un marqueur en zone Unicode
+        # privée : un littéral ou une regex ne peut donc pas corrompre un jeton (« ENC », hex, « _0042 »…).
+        held: list[str] = []
+
+        def hold(tok: str) -> str:
+            held.append(tok)
+            return _HOLD_OPEN + "".join(chr(0xE000 + int(d)) for d in str(len(held) - 1)) + _HOLD_CLOSE
+
+        text = TOKEN_RE.sub(lambda m: hold(m.group(0)), text)
         if propagation:
             text = propagation.regex.sub(
-                lambda m: self.token(m.group(0), propagation.prefix_of.get(m.group(0).casefold(), "VALUE")), text)
+                lambda m: hold(self.token(m.group(0), propagation.prefix_of.get(m.group(0).casefold(), "VALUE"))), text)
         for lit in literals:
             if lit and lit in text:
-                text = text.replace(lit, self.token(lit, "VALUE"))
+                text = text.replace(lit, hold(self.token(lit, "VALUE")))
         for d in detectors:
-            text = d.sub(text, lambda v, p: self.token(v, p))
-        return text
+            text = d.sub(text, lambda v, p: hold(self.token(v, p)))
+        if not held:
+            return text
+        return _HOLD_RE.sub(lambda m: held[int("".join(str(ord(c) - 0xE000) for c in m.group(1)))], text)
 
     def mask_cell(self, value, masked: bool, literals: list[str], detectors: list[Detector],
                   propagation: Propagation | None = None, prefix: str = "VALUE"):
@@ -692,6 +706,10 @@ class Tokenizer:
         if isinstance(value, str) and (literals or detectors or propagation):
             return self.mask_text(value, literals, detectors, propagation)
         return value
+
+
+_HOLD_OPEN, _HOLD_CLOSE = "\uF8F0", "\uF8F1"
+_HOLD_RE = re.compile(f"{_HOLD_OPEN}([\uE000-\uE009]+){_HOLD_CLOSE}")
 
 
 def is_formula(v) -> bool:
@@ -975,16 +993,24 @@ def encrypt_file(path: Path, out: Path, keys: Keys, vault_path: Path, columns: C
     propagate    : masque aussi, partout dans le texte, les valeurs des cellules masquées.
     readable     : jetons lisibles (CONTACT_0042) au lieu de ENC_….
     """
+    _check_output(path, out)
     vault = Vault(Path(vault_path), keys)
     fmt, doc, rows, dialect, enc, tk = _process(path, keys, vault, columns, literals, patterns, header_row,
                                                 progress, log, mask_headers, propagate, readable, scan=False)
     out = Path(out)
+    # Le coffre d'abord : si l'écriture du fichier échoue, le coffre contient seulement des entrées en trop
+    # (sans conséquence) ; dans l'ordre inverse, le fichier produit contiendrait des jetons irrécupérables.
+    vault.save()
     if fmt == "csv":
         write_csv(out, rows, dialect, enc)
     else:
         doc.save(out)
-    vault.save()
     return {"masked": tk.count, "unique": len(vault.entries), "output": out, "vault": vault.path}
+
+
+def _check_output(path: Path, out: Path) -> None:
+    if Path(out).resolve() == Path(path).resolve():
+        raise ExcelCryptError("Choisissez un fichier de sortie différent de l'original.", "same_output")
 
 
 def scan_file(path: Path, columns: ColumnSelector, literals: list[str] | None = None,
@@ -1003,6 +1029,7 @@ def decrypt_file(path: Path, out: Path, keys: Keys, vault_path: Path,
                  progress: Progress | None = None) -> dict:
     path, out = Path(path), Path(out)
     fmt = check_format(path)
+    _check_output(path, out)
     if not Path(vault_path).exists():
         raise ExcelCryptError(f"Coffre introuvable : {vault_path}", "vault_missing", name=Path(vault_path).name)
     vault = Vault(Path(vault_path), keys)
@@ -1063,7 +1090,13 @@ def decrypt_file(path: Path, out: Path, keys: Keys, vault_path: Path,
                 def title_sub(m):
                     found, v, _ = vault.resolve(m.group(0))
                     return value_as_text(v) if found else m.group(0)
-                ws.title = re.sub(r"[\[\]:*?/\\]", "_", ANY_TOKEN_RE.sub(title_sub, ws.title))[:31]
+                title = re.sub(r"[\[\]:*?/\\]", "_", ANY_TOKEN_RE.sub(title_sub, ws.title))[:31]
+                taken = {w.title.casefold() for w in wb.worksheets if w is not ws}
+                base, n = title, 2
+                while title.casefold() in taken:  # Excel refuse deux feuilles de même nom (casse ignorée)
+                    title = f"{base[:31 - len(str(n)) - 3]} ({n})"
+                    n += 1
+                ws.title = title
         wb.save(out)
 
     stats["output"] = out
