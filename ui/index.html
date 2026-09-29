@@ -1,0 +1,2529 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ExcelCrypt</title>
+<style>
+/* ============================================================
+   Jetons DIVE Turbinen (design-system.md §2 à §4) - thème clair uniquement
+   ============================================================ */
+:root {
+  --color-primary: #004A99;
+  --color-primary-hover: #003A78;
+  --color-primary-light: #1E63B5;
+  --color-primary-tint: #E8F0F9;
+  --color-primary-wash: rgba(0, 74, 153, .045);   /* dérivé du bleu : cellules protégées */
+  --color-accent: #EE7F00;
+  --color-accent-hover: #CC6E00;
+  --color-accent-tint: #FFF3E6;
+  --color-cta: #A85F00;
+  --color-cta-hover: #8C4E00;
+  --color-neutral: #BCBDBF;
+  --color-bg: #F5F7FA;
+  --color-surface: #FFFFFF;
+  --color-text: #1A2230;
+  --color-text-secondary: #5B6676;
+  --color-border: #E4E8EE;
+  --color-border-strong: #BCBDBF;
+  --color-success: #1E7B4F;
+  --color-success-tint: #E7F4EE;
+  --color-danger: #B42318;
+  --color-danger-hover: #911A12;
+  --color-danger-tint: #FDECEA;
+  --color-focus-ring: #1E63B5;
+
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, .05);
+  --shadow-md: 0 4px 12px rgba(16, 24, 40, .08);
+  --shadow-lg: 0 12px 32px rgba(16, 24, 40, .10);
+  --ease: cubic-bezier(.16, 1, .3, 1);
+  --dur: 170ms;
+  --z-sticky: 1100; --z-overlay: 1200; --z-modal: 1300; --z-toast: 1400; --z-tooltip: 1500;
+
+  --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--color-bg); color: var(--color-text);
+  font: 14px/20px var(--font); font-feature-settings: "cv05", "ss01";
+  -webkit-font-smoothing: antialiased; overflow: hidden;
+  user-select: none; -webkit-user-select: none;
+}
+input, textarea { user-select: text; -webkit-user-select: text; }
+button { font: inherit; color: inherit; }
+.num { font-variant-numeric: tabular-nums; }
+svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+svg.i.sm { width: 16px; height: 16px; }
+svg.i.lg { width: 22px; height: 22px; }
+svg.i.xl { width: 32px; height: 32px; stroke-width: 1.5; }
+:focus { outline: none; }
+:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
+
+/* Losange DIVE : repère discret (§1), jamais plein orange, un par zone */
+.diamond { display: inline-block; width: 7px; height: 7px; background: var(--color-primary); transform: rotate(45deg); flex: none; }
+.diamond.outline { background: transparent; border: 1.5px solid var(--color-primary); }
+
+/* ---------- boutons (§6) ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 40px; padding: 0 16px; border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text);
+  font-weight: 500; cursor: pointer; white-space: nowrap;
+  transition: background-color var(--dur) var(--ease), border-color var(--dur) var(--ease), transform 80ms var(--ease);
+}
+.btn:hover { background: var(--color-bg); border-color: var(--color-border-strong); }
+.btn:active { transform: translateY(1px); }
+.btn:disabled { background: var(--color-border); border-color: var(--color-border); color: var(--color-text-secondary); cursor: not-allowed; transform: none; }
+.btn.primary { background: var(--color-cta); border-color: var(--color-cta); color: #fff; font-weight: 700; }
+.btn.primary:hover:not(:disabled) { background: var(--color-cta-hover); border-color: var(--color-cta-hover); }
+.btn.primary:disabled { background: var(--color-border); border-color: var(--color-border); color: var(--color-text-secondary); }
+.btn.secondary { background: transparent; border-color: var(--color-primary); color: var(--color-primary); }
+.btn.secondary:hover { background: var(--color-primary-tint); }
+.btn.ghost { background: transparent; border-color: transparent; color: var(--color-text-secondary); }
+.btn.ghost:hover { background: var(--color-bg); color: var(--color-text); }
+.btn.lg { height: 44px; font-size: 15px; }
+.btn.sm { height: 32px; padding: 0 12px; font-size: 13px; }
+.btn.icon { width: 40px; padding: 0; }
+
+/* ---------- en-tête (§5) ---------- */
+.topbar {
+  height: 64px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px;
+  padding: 0 24px; border-bottom: 1px solid var(--color-border); background: var(--color-surface);
+  position: relative; z-index: var(--z-sticky);
+}
+.brand { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.brand-logo { height: 34px; width: auto; display: block; }
+.brand-sep { width: 1px; height: 28px; background: var(--color-border); }
+.brand b { font-size: 15px; font-weight: 600; color: var(--color-primary); letter-spacing: -.01em; display: block; line-height: 18px; }
+.brand small { color: var(--color-text-secondary); font-size: 12px; font-weight: 500; }
+
+.seg { display: inline-flex; padding: 3px; gap: 2px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
+.seg button {
+  display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 14px;
+  border: 0; border-radius: 6px; background: transparent; color: var(--color-text-secondary); font-weight: 500; cursor: pointer;
+  transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.seg button:hover { color: var(--color-text); }
+.seg button[aria-selected="true"] { background: var(--color-surface); color: var(--color-primary); font-weight: 600; box-shadow: var(--shadow-sm), 0 0 0 1px var(--color-border); }
+.seg.sm button { height: 28px; padding: 0 10px; font-size: 13px; }
+
+.status-pills { display: flex; justify-content: flex-end; gap: 8px; }
+.pill {
+  display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px;
+  border-radius: var(--radius-sm); border: 1px solid var(--color-border); background: var(--color-surface);
+  color: var(--color-text); font-size: 13px; font-weight: 500; cursor: pointer; max-width: 240px;
+  transition: border-color var(--dur), background-color var(--dur);
+}
+.pill:hover { border-color: var(--color-border-strong); background: var(--color-bg); }
+.pill svg.i { color: var(--color-text-secondary); }
+.pill .state { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--color-success); }
+.pill.bad { border-color: #F1B9B3; background: var(--color-danger-tint); }
+.pill.bad .state { color: var(--color-danger); }
+.pill.warn .state { color: var(--color-text-secondary); }
+.pill span.t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- vues ---------- */
+main { height: calc(100% - 64px); position: relative; }
+.view { position: absolute; inset: 0; display: none; }
+.view.active { display: flex; animation: fadeIn 180ms var(--ease); }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* ---------- écrans d'accueil ---------- */
+.welcome { flex-direction: column; align-items: center; justify-content: center; padding: 32px; overflow: auto; }
+.welcome .mark { display: flex; align-items: center; gap: 10px; color: var(--color-text-secondary); font-size: 12px; font-weight: 500; margin-bottom: 12px; }
+.welcome h1 { font-size: 24px; line-height: 32px; font-weight: 600; letter-spacing: -.01em; margin: 0 0 8px; text-align: center; }
+.welcome p.lead { color: var(--color-text-secondary); margin: 0 0 32px; text-align: center; max-width: 560px; font-size: 15px; line-height: 24px; }
+.dropzone {
+  width: min(640px, 100%); border: 1.5px dashed var(--color-border-strong); border-radius: var(--radius-lg);
+  background: var(--color-surface); padding: 40px 32px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center;
+  cursor: pointer; transition: border-color var(--dur), background-color var(--dur);
+}
+.dropzone:hover, .dropzone.over { border-color: var(--color-primary); background: var(--color-primary-wash); }
+.dz-icon {
+  width: 60px; height: 60px; border-radius: var(--radius-md); display: grid; place-items: center;
+  background: var(--color-primary-tint); color: var(--color-primary);
+}
+.dropzone h2 { margin: 4px 0 0; font-size: 18px; line-height: 28px; font-weight: 600; }
+.dropzone p { margin: 0; color: var(--color-text-secondary); }
+.dropzone u { color: var(--color-primary); text-underline-offset: 3px; }
+.formats { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-top: 4px; }
+.formats span { font: 500 12px var(--mono); color: var(--color-text-secondary); padding: 2px 8px; border-radius: var(--radius-xs); border: 1px solid var(--color-border); background: var(--color-bg); }
+.kbd { font: 12px var(--mono); padding: 1px 6px; border-radius: var(--radius-xs); border: 1px solid var(--color-border-strong); color: var(--color-text-secondary); background: var(--color-bg); }
+
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); width: min(860px, 100%); margin-top: 32px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); }
+.step { padding: 16px 20px; display: flex; gap: 12px; }
+.step + .step { border-left: 1px solid var(--color-border); }
+.step .n { font: 600 12px var(--mono); color: var(--color-primary); padding-top: 1px; }
+.step b { display: block; font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+.step span { color: var(--color-text-secondary); font-size: 13px; }
+
+.checklist { width: min(640px, 100%); margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.check { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: var(--radius-md); background: var(--color-surface); border: 1px solid var(--color-border); font-size: 13px; }
+.check .ico { width: 30px; height: 30px; border-radius: var(--radius-sm); display: grid; place-items: center; flex: none; }
+.check.ok .ico { background: var(--color-success-tint); color: var(--color-success); }
+.check.bad .ico { background: var(--color-danger-tint); color: var(--color-danger); }
+.check b { display: block; font-weight: 600; }
+.check span { color: var(--color-text-secondary); }
+.check .btn { margin-left: auto; }
+
+/* ---------- espace de travail ---------- */
+.workspace { grid-template-columns: 340px 1fr; }
+.view.workspace.active { display: grid; }
+.sidebar { border-right: 1px solid var(--color-border); background: var(--color-surface); display: flex; flex-direction: column; min-height: 0; }
+.sidebar-scroll { overflow: auto; flex: 1; padding: 16px; display: flex; flex-direction: column; gap: 24px; min-height: 0; }
+.file-card { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: var(--radius-md); background: var(--color-bg); border: 1px solid var(--color-border); }
+.file-card .ic { width: 40px; height: 40px; border-radius: var(--radius-sm); display: grid; place-items: center; background: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-primary); flex: none; }
+.file-card .meta { min-width: 0; flex: 1; }
+.file-card b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 600; }
+.file-card span { color: var(--color-text-secondary); font-size: 12px; }
+
+.section-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.section-h h3 { margin: 0; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.badge { font: 500 12px/16px var(--font); padding: 2px 8px; border-radius: var(--radius-sm); background: var(--color-primary-tint); color: var(--color-primary); }
+.badge.muted { background: var(--color-bg); color: var(--color-text-secondary); border: 1px solid var(--color-border); }
+.badge.ok { background: var(--color-success-tint); color: var(--color-success); }
+.badge.bad { background: var(--color-danger-tint); color: var(--color-danger); }
+
+.search { position: relative; margin-bottom: 8px; }
+.search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--color-text-secondary); }
+.input {
+  width: 100%; height: 40px; padding: 0 12px; border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text); font: inherit;
+  transition: border-color var(--dur);
+}
+.input::placeholder, .chips input::placeholder { color: #8A94A3; }
+.input:hover { border-color: var(--color-border-strong); }
+.input:focus { border-color: var(--color-primary); outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
+.search .input { padding-left: 36px; }
+.col-actions { display: flex; gap: 8px; margin-bottom: 8px; }
+.col-actions .btn { flex: 1; }
+
+.col-list { display: flex; flex-direction: column; border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; }
+.col-item {
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 0; border-top: 1px solid var(--color-border);
+  cursor: pointer; text-align: left; width: 100%; background: var(--color-surface); transition: background-color var(--dur);
+}
+.col-item:first-child { border-top: 0; }
+.col-item:hover { background: var(--color-bg); }
+.col-item.on { background: var(--color-primary-tint); }
+.col-letter { font: 600 11px var(--mono); width: 28px; height: 22px; border-radius: var(--radius-xs); display: grid; place-items: center; background: var(--color-bg); border: 1px solid var(--color-border); color: var(--color-text-secondary); flex: none; }
+.col-item.on .col-letter { background: var(--color-surface); border-color: #B8CDE6; color: var(--color-primary); }
+.col-main { flex: 1; min-width: 0; }
+.col-main b { display: block; font-weight: 500; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.col-item.on .col-main b { color: var(--color-primary); font-weight: 600; }
+.col-main b.none { color: var(--color-text-secondary); font-style: italic; font-weight: 400; }
+.col-main > span.num { white-space: normal; }
+.col-main > span { display: block; color: var(--color-text-secondary); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tag-sug { display: inline-flex; align-items: center; gap: 4px; color: var(--color-text); font-weight: 500; vertical-align: -2px; }
+.tag-sug svg.i { width: 12px; height: 12px; color: var(--color-accent-hover); }
+
+.switch { width: 34px; height: 20px; border-radius: 10px; background: var(--color-neutral); position: relative; flex: none; transition: background-color var(--dur) var(--ease); }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: var(--shadow-sm); transition: transform var(--dur) var(--ease); }
+.on > .switch { background: var(--color-primary); }
+.on > .switch::after { transform: translateX(14px); }
+
+.opt-list { border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; }
+.opt-row {
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px; width: 100%; text-align: left;
+  background: var(--color-surface); border: 0; border-top: 1px solid var(--color-border); cursor: pointer; transition: background-color var(--dur);
+}
+.opt-row:first-child { border-top: 0; }
+.opt-row:hover { background: var(--color-bg); }
+.opt-row.on { background: var(--color-primary-tint); }
+.opt-row .ic { color: var(--color-text-secondary); }
+.opt-row.on .ic { color: var(--color-primary); }
+.opt-row .txt { flex: 1; }
+.opt-row .txt b { display: block; font-weight: 500; font-size: 14px; }
+.opt-row .txt span { color: var(--color-text-secondary); font-size: 12px; }
+
+.chips-field { margin-top: 16px; }
+.chips-field label { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 500; margin-bottom: 6px; }
+.chips-field label svg { color: var(--color-text-secondary); }
+.chips {
+  display: flex; flex-wrap: wrap; gap: 6px; padding: 7px; min-height: 40px; border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border); background: var(--color-surface); cursor: text; transition: border-color var(--dur);
+}
+.chips:hover { border-color: var(--color-border-strong); }
+.chips:focus-within { border-color: var(--color-primary); outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
+.chips input { flex: 1; min-width: 90px; border: 0; background: transparent; color: var(--color-text); font: inherit; height: 24px; padding: 0 4px; }
+.chips input:focus { outline: none; }
+.chip {
+  display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 4px 0 8px; border-radius: var(--radius-xs);
+  background: var(--color-primary-tint); color: var(--color-primary); font-size: 13px; font-weight: 500; max-width: 100%;
+}
+.chip.mono { font-family: var(--mono); font-size: 12px; }
+.chip.err { background: var(--color-danger-tint); color: var(--color-danger); }
+.chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chip button { border: 0; background: transparent; cursor: pointer; padding: 2px; border-radius: var(--radius-xs); display: grid; place-items: center; color: inherit; }
+.chip button:hover { background: rgba(0, 74, 153, .1); }
+.help { color: var(--color-text-secondary); font-size: 12px; line-height: 16px; margin-top: 6px; }
+.field-err { color: var(--color-danger); font-size: 12px; line-height: 16px; margin-top: 6px; }
+
+.sidebar-foot { border-top: 1px solid var(--color-border); padding: 16px; background: var(--color-surface); }
+.summary { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; min-height: 24px; }
+.summary .s-item { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; color: var(--color-text); background: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: 2px 8px; }
+.summary .s-item svg.i { width: 13px; height: 13px; color: var(--color-primary); }
+.summary .empty { color: var(--color-text-secondary); font-size: 13px; }
+.sidebar-foot .btn.primary { width: 100%; }
+
+/* ---------- sélection manuelle ---------- */
+.man-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip svg.i { width: 13px; height: 13px; }
+.range-row { display: flex; gap: 8px; }
+.input.mono { font-family: var(--mono); font-size: 13px; }
+.input[aria-invalid="true"] { border-color: var(--color-danger); }
+.btn.sm.icon { width: 32px; }
+
+/* ---------- zone principale / tableau (§6 Table) ---------- */
+.main { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--color-bg); }
+.toolbar { display: flex; align-items: center; gap: 16px; padding: 12px 16px; border-bottom: 1px solid var(--color-border); background: var(--color-surface); flex-wrap: wrap; }
+.tabs { display: flex; gap: 4px; overflow-x: auto; flex: 1; min-width: 120px; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab {
+  display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: var(--radius-sm); border: 1px solid transparent;
+  background: transparent; color: var(--color-text-secondary); cursor: pointer; white-space: nowrap; font-size: 13px; font-weight: 500;
+  transition: background-color var(--dur), color var(--dur);
+}
+.tab:hover { color: var(--color-text); background: var(--color-bg); }
+.tab[aria-selected="true"] { color: var(--color-primary); background: var(--color-primary-tint); font-weight: 600; }
+#btn-suggest .badge { padding: 0 6px; margin-left: -2px; }
+.tab .cnt { font: 600 11px/16px var(--font); color: var(--color-primary); background: var(--color-surface); border: 1px solid #B8CDE6; border-radius: var(--radius-xs); padding: 0 5px; }
+.stepper { display: inline-flex; align-items: center; gap: 8px; color: var(--color-text-secondary); font-size: 13px; }
+.stepper .box { display: inline-flex; align-items: center; border: 1px solid var(--color-border); border-radius: var(--radius-sm); overflow: hidden; background: var(--color-surface); }
+.stepper button { width: 28px; height: 30px; border: 0; background: transparent; color: var(--color-text-secondary); cursor: pointer; display: grid; place-items: center; }
+.stepper button:hover { background: var(--color-bg); color: var(--color-text); }
+.stepper output { min-width: 28px; text-align: center; color: var(--color-text); font-weight: 600; }
+
+.table-wrap { flex: 1; overflow: auto; position: relative; min-height: 0; background: var(--color-surface); }
+table.grid { border-collapse: separate; border-spacing: 0; font-size: 13px; min-width: 100%; }
+.grid th, .grid td { padding: 0 12px; height: 36px; border-bottom: 1px solid var(--color-border); border-right: 1px solid var(--color-border); white-space: nowrap; max-width: 280px; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+.grid thead th { position: sticky; top: 0; z-index: 2; background: var(--color-bg); height: 44px; padding: 0; font-weight: 500; color: var(--color-text-secondary); }
+.grid th.rn, .grid td.rn { position: sticky; left: 0; z-index: 1; background: var(--color-bg); color: var(--color-text-secondary); text-align: right; font: 12px var(--mono); padding: 0 10px; min-width: 52px; }
+.grid thead th.rn { z-index: 3; }
+.grid tbody tr:hover td { background: var(--color-bg); }
+.grid tbody tr:hover td.m { background: var(--color-primary-tint); }
+.th-btn {
+  display: flex; align-items: center; gap: 8px; width: 100%; height: 100%; padding: 0 12px; border: 0; background: transparent;
+  cursor: pointer; text-align: left; color: var(--color-text); font-weight: 600; font-size: 13px; transition: background-color var(--dur);
+}
+.th-btn:hover { background: #EDF1F6; }
+.th-btn .l { font: 500 11px var(--mono); color: var(--color-text-secondary); }
+.th-btn .lock { color: var(--color-text-secondary); opacity: 0; transition: opacity var(--dur); }
+.th-btn:hover .lock { opacity: 1; }
+.grid th.m { background: var(--color-primary-tint); box-shadow: inset 0 -2px 0 var(--color-primary); }
+.grid th.m .th-btn { color: var(--color-primary); }
+.grid th.m .th-btn .l { color: var(--color-primary-light); }
+.grid th.m .th-btn .lock { opacity: 1; color: var(--color-primary); }
+.grid td.m { background: var(--color-primary-wash); }
+.grid td.tok { font-family: var(--mono); font-size: 12px; color: var(--color-primary); }
+.grid td .t { font-family: var(--mono); font-size: 12px; color: var(--color-primary); background: var(--color-primary-tint); border-radius: var(--radius-xs); padding: 1px 4px; }
+.grid td.empty { color: var(--color-text-secondary); }
+.grid td[data-c] { cursor: cell; }
+.grid td[data-c]:hover { box-shadow: inset 0 0 0 1px var(--color-primary-light); }
+.grid td.pick { background: var(--color-primary-tint); }
+.grid td.drag { background: rgba(30, 99, 181, .16); box-shadow: inset 0 0 0 1px var(--color-primary-light); }
+.grid td.rn { padding: 0; }
+.rn-btn { display: flex; align-items: center; justify-content: flex-end; gap: 4px; width: 100%; height: 100%; padding: 0 10px; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.rn-btn:hover { background: #EDF1F6; color: var(--color-text); }
+.grid td.rn.m { background: var(--color-primary-tint); color: var(--color-primary); box-shadow: inset -2px 0 0 var(--color-primary); }
+.grid td.rn.m svg.i { width: 12px; height: 12px; }
+.grid td.unk { background: var(--color-accent-tint); color: var(--color-cta-hover); font-family: var(--mono); font-size: 12px; }
+
+.table-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 16px; border-top: 1px solid var(--color-border); color: var(--color-text-secondary); font-size: 12px; background: var(--color-surface); }
+.legend { display: flex; align-items: center; gap: 16px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.nokey-banner { display: none; align-items: center; gap: 12px; padding: 10px 16px; background: var(--color-accent-tint); color: var(--color-text); font-size: 13px; border-bottom: 1px solid #F6D3A8; }
+.nokey-banner svg { color: var(--color-accent-hover); }
+.nokey-banner.show { display: flex; }
+.nokey-banner .btn { margin-left: auto; }
+
+.tooltip {
+  position: fixed; z-index: var(--z-tooltip); pointer-events: none; max-width: 360px; padding: 8px 12px; border-radius: var(--radius-sm);
+  background: var(--color-text); color: #fff; box-shadow: var(--shadow-md); font-size: 13px;
+  opacity: 0; transition: opacity 120ms;
+}
+.tooltip.show { opacity: 1; }
+.tooltip small { display: block; color: #C5CCD6; font-size: 11px; font-weight: 500; margin-bottom: 2px; }
+.tooltip div { white-space: pre-wrap; word-break: break-word; }
+
+/* ---------- vue restauration ---------- */
+.restore-layout { flex-direction: column; min-height: 0; }
+.result-head { display: flex; align-items: center; gap: 16px; padding: 16px 24px; border-bottom: 1px solid var(--color-border); background: var(--color-surface); flex-wrap: wrap; }
+.result-head .ok-ic { width: 44px; height: 44px; border-radius: var(--radius-md); display: grid; place-items: center; background: var(--color-success-tint); color: var(--color-success); flex: none; }
+.result-head .t { flex: 1; min-width: 200px; }
+.result-head b { font-size: 18px; line-height: 28px; font-weight: 600; display: block; }
+.result-head span { color: var(--color-text-secondary); font-size: 13px; }
+.warn-box { display: flex; gap: 12px; align-items: flex-start; margin: 12px 24px; padding: 12px 16px; border-radius: var(--radius-md); background: var(--color-accent-tint); border: 1px solid #F6D3A8; color: var(--color-text); font-size: 13px; }
+.warn-box svg { color: var(--color-accent-hover); margin-top: 1px; }
+.warn-box code { font: 12px var(--mono); color: var(--color-cta-hover); }
+
+/* ---------- boîtes de dialogue (§6 Dialog) ---------- */
+.overlay { position: fixed; inset: 0; z-index: var(--z-modal); background: rgba(16, 24, 40, .45); display: none; align-items: center; justify-content: center; padding: 24px; }
+.overlay.show { display: flex; animation: fadeIn 150ms var(--ease); }
+.modal { width: min(480px, 100%); max-height: 100%; overflow: auto; background: var(--color-surface); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); animation: pop 180ms var(--ease); }
+@keyframes pop { from { opacity: 0; transform: scale(.98); } to { opacity: 1; transform: none; } }
+.modal-h { display: flex; align-items: flex-start; gap: 16px; padding: 24px 24px 0; }
+.modal-h .mi { width: 40px; height: 40px; border-radius: var(--radius-sm); display: grid; place-items: center; flex: none; background: var(--color-primary-tint); color: var(--color-primary); }
+.modal-h .mi.ok { background: var(--color-success-tint); color: var(--color-success); }
+.modal-h .mi.bad { background: var(--color-danger-tint); color: var(--color-danger); }
+.modal-h .mi.warn { background: var(--color-accent-tint); color: var(--color-accent-hover); }
+.modal-h h2 { margin: 0; font-size: 18px; line-height: 28px; font-weight: 600; }
+.modal-h p { margin: 2px 0 0; color: var(--color-text-secondary); font-size: 14px; }
+.modal-h .x { margin-left: auto; margin-top: -6px; margin-right: -8px; }
+.modal-b { padding: 20px 24px; }
+.modal-f { padding: 16px 24px 24px; display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.stats { display: grid; grid-template-columns: repeat(2, 1fr); border: 1px solid var(--color-border); border-radius: var(--radius-md); margin-bottom: 16px; }
+.stat { padding: 12px 16px; }
+.stat + .stat { border-left: 1px solid var(--color-border); }
+.stat b { display: block; font-size: 24px; line-height: 32px; font-weight: 600; letter-spacing: -.01em; font-variant-numeric: tabular-nums; color: var(--color-primary); }
+.stat span { color: var(--color-text-secondary); font-size: 13px; }
+.file-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: var(--radius-md); border: 1px solid var(--color-border); margin-bottom: 8px; }
+.file-row .ic { width: 34px; height: 34px; border-radius: var(--radius-sm); display: grid; place-items: center; flex: none; }
+.file-row.send .ic { background: var(--color-primary-tint); color: var(--color-primary); }
+.file-row.keep { background: var(--color-accent-tint); border-color: #F6D3A8; }
+.file-row.keep .ic { background: var(--color-surface); color: var(--color-accent-hover); }
+.file-row .meta { flex: 1; min-width: 0; }
+.file-row small { display: block; font-size: 12px; font-weight: 500; color: var(--color-text-secondary); }
+.file-row b { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+.key-path { font: 12px/18px var(--mono); color: var(--color-text-secondary); word-break: break-all; }
+.key-block { padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--color-border); margin-bottom: 12px; }
+.key-block .top { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.key-block .top svg { color: var(--color-primary); }
+.key-block .top b { flex: 1; font-weight: 600; }
+.note { display: flex; gap: 12px; padding: 12px 16px; border-radius: var(--radius-md); font-size: 13px; }
+.note svg { flex: none; margin-top: 1px; }
+.note.warn { background: var(--color-accent-tint); color: var(--color-text); border: 1px solid #F6D3A8; }
+.note.warn svg { color: var(--color-accent-hover); }
+.note.info { background: var(--color-primary-tint); color: var(--color-text); border: 1px solid #C9DAEE; }
+.note.info svg { color: var(--color-primary); }
+
+.progress { height: 6px; border-radius: 3px; background: var(--color-border); overflow: hidden; margin: 12px 0 8px; }
+.progress div { height: 100%; width: 0; border-radius: 3px; background: var(--color-primary); transition: width 200ms var(--ease); }
+.progress.indet div { width: 35%; animation: indet 1.1s ease-in-out infinite; }
+@keyframes indet { from { transform: translateX(-100%); } to { transform: translateX(290%); } }
+.spinner { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #C9DAEE; border-top-color: var(--color-primary); animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- toasts (§6 : en haut à droite, 4 s) ---------- */
+.toasts { position: fixed; right: 24px; top: 80px; z-index: var(--z-toast); display: flex; flex-direction: column; gap: 8px; }
+.toast {
+  display: flex; align-items: center; gap: 12px; min-width: 280px; max-width: 420px; padding: 12px 16px; border-radius: var(--radius-md);
+  background: var(--color-surface); border: 1px solid var(--color-border); box-shadow: var(--shadow-md); font-size: 14px;
+  animation: slideIn 180ms var(--ease);
+}
+.toast.ok svg { color: var(--color-success); }
+.toast.bad svg { color: var(--color-danger); }
+.toast.info svg { color: var(--color-primary); }
+.toast.out { animation: slideOut 130ms var(--ease) forwards; }
+@keyframes slideIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@keyframes slideOut { to { opacity: 0; transform: translateY(-6px); } }
+
+/* ---------- glisser-déposer global ---------- */
+.drag-veil {
+  position: fixed; inset: 12px; z-index: var(--z-overlay); border: 2px dashed var(--color-primary); border-radius: var(--radius-lg);
+  background: rgba(245, 247, 250, .92); display: none; align-items: center; justify-content: center; flex-direction: column; gap: 12px;
+  pointer-events: none; font-size: 18px; font-weight: 600; color: var(--color-primary);
+}
+.drag-veil.show { display: flex; animation: fadeIn 120ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
+}
+@media (max-width: 1180px) {
+  .workspace { grid-template-columns: 300px 1fr; }
+  .brand small, .brand-sep + div small { display: none; }
+  .status-pills .pill { max-width: 170px; }
+}
+
+/* ---------- profil, lots, contrôle, mot de passe ---------- */
+[hidden] { display: none !important; }
+.profile-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
+.profile-actions #profile-del { margin-left: auto; }
+.select-wrap { position: relative; flex: 1; min-width: 0; }
+.select-wrap select { appearance: none; -webkit-appearance: none; padding-right: 32px; cursor: pointer; text-overflow: ellipsis; }
+.select-wrap svg { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--color-text-secondary); pointer-events: none; }
+.batch-cta { margin-top: 16px; }
+.det-group { font-size: 12px; font-weight: 500; color: var(--color-text-secondary); margin: 12px 0 6px; }
+.det-group:first-child { margin-top: 0; }
+.field { margin-bottom: 14px; }
+.field label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 6px; }
+.pw-wrap { position: relative; }
+.pw-wrap .input { padding-right: 44px; }
+.pw-wrap button { position: absolute; right: 4px; top: 4px; width: 32px; height: 32px; border: 0; background: transparent; border-radius: var(--radius-xs); color: var(--color-text-secondary); cursor: pointer; display: grid; place-items: center; }
+.pw-wrap button:hover { background: var(--color-bg); color: var(--color-text); }
+.input.err { border-color: var(--color-danger); }
+.finding { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-top: 1px solid var(--color-border); cursor: pointer; }
+.finding:first-child { border-top: 0; }
+.finding:hover { background: var(--color-bg); }
+.finding input { margin-top: 3px; width: 16px; height: 16px; accent-color: var(--color-primary); flex: none; }
+.finding b { display: block; font-size: 14px; font-weight: 600; }
+.finding .where { color: var(--color-text-secondary); font-size: 13px; }
+.finding code { font: 12px var(--mono); background: var(--color-accent-tint); color: var(--color-cta-hover); padding: 1px 5px; border-radius: var(--radius-xs); word-break: break-all; }
+.finding .fix { display: block; font-size: 12px; color: var(--color-primary); margin-top: 4px; }
+.findings { border: 1px solid var(--color-border); border-radius: var(--radius-md); max-height: 340px; overflow: auto; }
+.modal.wide { width: min(620px, 100%); }
+.batch-list { border: 1px solid var(--color-border); border-radius: var(--radius-md); max-height: 320px; overflow: auto; }
+.batch-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-top: 1px solid var(--color-border); font-size: 13px; }
+.batch-item:first-child { border-top: 0; }
+.batch-item .st { width: 24px; height: 24px; border-radius: var(--radius-xs); display: grid; place-items: center; flex: none; }
+.batch-item .st.ok { background: var(--color-success-tint); color: var(--color-success); }
+.batch-item .st.bad { background: var(--color-danger-tint); color: var(--color-danger); }
+.batch-item b { font-weight: 600; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.batch-item span { color: var(--color-text-secondary); }
+.batch-item .warn { color: var(--color-cta-hover); }
+.scan-line { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--color-success); margin-bottom: 12px; }
+.scan-line.warn { color: var(--color-cta-hover); }
+.toast .act { margin-left: auto; border: 0; background: transparent; color: var(--color-primary); font-weight: 600; cursor: pointer; padding: 4px 6px; border-radius: var(--radius-xs); }
+.toast .act:hover { background: var(--color-primary-tint); }
+.pill.locked { border-color: #F6D3A8; background: var(--color-accent-tint); }
+
+/* ---------- langue ---------- */
+:root { --z-dropdown: 1000; }
+.top-right { display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
+.lang { position: relative; }
+.lang-btn {
+  display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px; border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border); background: var(--color-surface); cursor: pointer; font-size: 13px; font-weight: 600;
+  transition: border-color var(--dur), background-color var(--dur);
+}
+.lang-btn:hover { border-color: var(--color-border-strong); background: var(--color-bg); }
+.lang-btn .chev { color: var(--color-text-secondary); transition: transform var(--dur) var(--ease); }
+.lang-btn[aria-expanded="true"] .chev { transform: rotate(180deg); }
+.flag { width: 21px; height: 14px; border-radius: 2px; flex: none; display: block; box-shadow: 0 0 0 1px rgba(16, 24, 40, .14); }
+.flag.lg { width: 33px; height: 22px; border-radius: 3px; }
+.menu {
+  position: absolute; right: 0; top: calc(100% + 6px); min-width: 196px; padding: 4px; display: none;
+  background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md); z-index: var(--z-dropdown);
+}
+.menu.show { display: block; animation: fadeIn 120ms var(--ease); }
+.menu button {
+  display: flex; align-items: center; gap: 10px; width: 100%; height: 36px; padding: 0 10px; border: 0;
+  border-radius: var(--radius-xs); background: transparent; cursor: pointer; font-size: 14px; text-align: left;
+}
+.menu button:hover, .menu button:focus-visible { background: var(--color-bg); outline: none; }
+.menu button[aria-checked="true"] { color: var(--color-primary); font-weight: 600; }
+.menu button .ck { margin-left: auto; color: var(--color-primary); visibility: hidden; }
+.menu button[aria-checked="true"] .ck { visibility: visible; }
+.lang-grid { display: grid; gap: 8px; }
+.lang-choice {
+  display: flex; align-items: center; gap: 14px; padding: 14px 16px; width: 100%; text-align: left;
+  border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); cursor: pointer;
+  transition: border-color var(--dur), background-color var(--dur);
+}
+.lang-choice:hover, .lang-choice:focus-visible { border-color: var(--color-primary); background: var(--color-primary-wash); }
+.lang-choice.suggested { border-color: #B8CDE6; }
+.lang-choice b { display: block; font-size: 15px; font-weight: 600; }
+.lang-choice span { color: var(--color-text-secondary); font-size: 13px; }
+.lang-choice .arrow { margin-left: auto; color: var(--color-text-secondary); }
+.grid th .th-tok { font-family: var(--mono); font-size: 12px; font-weight: 500; }
+.opt-list.tight { margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <img class="brand-logo" src="logo.svg" alt="DIVE Turbinen GmbH &amp; Co. KG">
+    <span class="brand-sep" aria-hidden="true"></span>
+    <div><b>ExcelCrypt</b><small data-i18n="brandSub"></small></div>
+  </div>
+  <nav class="seg" role="tablist" data-i18n-aria="modeAria">
+    <button role="tab" id="tab-protect" aria-selected="true" onclick="setMode('protect')"><svg class="i sm"><use href="#i-lock"/></svg><span data-i18n="protect"></span></button>
+    <button role="tab" id="tab-restore" aria-selected="false" onclick="setMode('restore')"><svg class="i sm"><use href="#i-unlock"/></svg><span data-i18n="restore"></span></button>
+  </nav>
+  <div class="top-right">
+    <div class="lang" id="lang">
+      <button class="lang-btn" id="lang-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="lang-menu" data-i18n-aria="langAria" onclick="toggleLangMenu()">
+        <svg class="flag" id="lang-flag"><use href="#f-fr"/></svg><span id="lang-code">FR</span><svg class="i sm chev"><use href="#i-chevron"/></svg>
+      </button>
+      <div class="menu" id="lang-menu" role="menu"></div>
+    </div>
+    <button class="pill" id="pill-key" onclick="openKeyModal()" data-i18n-aria="keyAria"><svg class="i sm"><use href="#i-key"/></svg><span class="t" id="pill-key-t">…</span><span class="state" id="pill-key-s"></span></button>
+    <button class="pill" id="pill-vault" onclick="openKeyModal()" data-i18n-aria="vaultAria"><svg class="i sm"><use href="#i-db"/></svg><span class="t" id="pill-vault-t">…</span></button>
+  </div>
+</header>
+
+<main>
+  <!-- ===== Protéger : accueil ===== -->
+  <section class="view welcome active" id="v-protect-empty">
+    <div class="mark"><span class="diamond"></span><span data-i18n="protect"></span></div>
+    <h1 data-i18n="welcomeTitle"></h1>
+    <p class="lead" data-i18n="welcomeLead"></p>
+    <button class="dropzone" id="dz-protect" onclick="pickAndLoad()">
+      <div class="dz-icon"><svg class="i xl"><use href="#i-sheet"/></svg></div>
+      <h2 data-i18n="dropExcel"></h2>
+      <p><span data-i18n-html="orBrowse"></span> · <span class="kbd" id="kbd-open">⌘O</span></p>
+      <div class="formats"><span>.xlsx</span><span>.xlsm</span><span>.csv</span><span>.tsv</span></div>
+    </button>
+    <button class="btn secondary batch-cta" onclick="batchModal()"><svg class="i sm"><use href="#i-folders"/></svg><span data-i18n="batchProtect"></span></button>
+    <div class="steps">
+      <div class="step"><div class="n">01</div><div><b data-i18n="step1"></b><span data-i18n="step1Sub"></span></div></div>
+      <div class="step"><div class="n">02</div><div><b data-i18n="step2"></b><span data-i18n="step2Sub"></span></div></div>
+      <div class="step"><div class="n">03</div><div><b data-i18n="step3"></b><span data-i18n="step3Sub"></span></div></div>
+    </div>
+  </section>
+
+  <!-- ===== Protéger : espace de travail ===== -->
+  <section class="view workspace" id="v-protect-work">
+    <aside class="sidebar">
+      <div class="sidebar-scroll">
+        <div class="file-card">
+          <div class="ic"><svg class="i"><use href="#i-sheet"/></svg></div>
+          <div class="meta"><b id="f-name"></b><span id="f-meta"></span></div>
+          <button class="btn sm ghost" onclick="pickAndLoad()" data-i18n="change" data-i18n-title="changeTitle"></button>
+        </div>
+
+        <div>
+          <div class="section-h"><h3><label for="profile-select" data-i18n="profile"></label></h3></div>
+          <div class="select-wrap">
+            <select class="input" id="profile-select" onchange="onProfileSelect(this.value)"></select>
+            <svg class="i sm"><use href="#i-chevron"/></svg>
+          </div>
+          <div class="profile-actions">
+            <button class="btn sm" onclick="saveProfileModal()"><svg class="i sm"><use href="#i-save"/></svg><span data-i18n="saveProfile"></span></button>
+            <button class="btn sm ghost" id="profile-batch" onclick="batchModal()" hidden><svg class="i sm"><use href="#i-folders"/></svg><span data-i18n="batchWithProfile"></span></button>
+            <button class="btn sm icon ghost" id="profile-del" onclick="deleteProfileModal()" data-i18n-aria="deleteProfileAria" data-i18n-title="deleteProfileAria" hidden><svg class="i sm"><use href="#i-trash"/></svg></button>
+          </div>
+        </div>
+
+        <div>
+          <div class="section-h">
+            <h3><span data-i18n="colsTitle"></span> <span class="badge" id="sel-count">0</span></h3>
+          </div>
+          <div class="search">
+            <svg class="i sm"><use href="#i-search"/></svg>
+            <input class="input" id="col-filter" data-i18n-ph="colsFilter" data-i18n-aria="colsFilter" oninput="renderColumns()">
+          </div>
+          <div class="col-actions">
+            <button class="btn sm" id="btn-suggest" onclick="suggest()" data-i18n-title="suggestTitle"><svg class="i sm" style="color:var(--color-accent-hover)"><use href="#i-sparkles"/></svg><span data-i18n="suggest"></span><span class="badge" id="sug-count" hidden></span></button>
+            <button class="btn sm" onclick="setAll(true)" data-i18n="all"></button>
+            <button class="btn sm" onclick="setAll(false)" data-i18n="none"></button>
+          </div>
+          <div class="col-list" id="col-list" role="list"></div>
+          <div class="opt-list tight">
+            <button class="opt-row on" id="opt-maskHeaders" onclick="toggleOpt('maskHeaders')" role="switch" aria-checked="true">
+              <svg class="i ic"><use href="#i-heading"/></svg>
+              <div class="txt"><b data-i18n="maskHeaders"></b><span data-i18n="maskHeadersSub"></span></div>
+              <div class="switch"></div>
+            </button>
+            <button class="opt-row on" id="opt-propagate" onclick="toggleOpt('propagate')" role="switch" aria-checked="true">
+              <svg class="i ic"><use href="#i-share"/></svg>
+              <div class="txt"><b data-i18n="propagate"></b><span data-i18n="propagateSub"></span></div>
+              <div class="switch"></div>
+            </button>
+            <button class="opt-row" id="opt-readable" onclick="toggleOpt('readable')" role="switch" aria-checked="false">
+              <svg class="i ic"><use href="#i-tag"/></svg>
+              <div class="txt"><b data-i18n="readable"></b><span data-i18n="readableSub"></span></div>
+              <div class="switch"></div>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <div class="section-h">
+            <h3><span data-i18n="manTitle"></span> <span class="badge" id="man-count">0</span></h3>
+            <button class="btn sm ghost" id="man-clear" onclick="clearManual()" hidden data-i18n="removeAll"></button>
+          </div>
+          <div class="man-list" id="man-list"></div>
+          <div class="chips-field">
+            <label for="in-range" data-i18n="rangeLabel"></label>
+            <div class="range-row">
+              <input class="input mono" id="in-range" placeholder="B5, A2:C40, 12-30" spellcheck="false" autocomplete="off" aria-describedby="range-help range-err">
+              <button class="btn" onclick="addRange()" data-i18n="add"></button>
+            </div>
+            <div class="help" id="range-help" data-i18n="rangeHelp"></div>
+            <div class="field-err" id="range-err" role="alert" hidden></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="section-h"><h3 data-i18n="detectTitle"></h3></div>
+          <div id="detector-list"></div>
+          <div class="chips-field">
+            <label for="in-values"><svg class="i sm"><use href="#i-type"/></svg><span data-i18n="valuesLabel"></span></label>
+            <div class="chips" id="chips-values" onclick="this.querySelector('input').focus()">
+              <input id="in-values" data-i18n-ph="valuesPh">
+            </div>
+            <div class="help" data-i18n="valuesHelp"></div>
+          </div>
+          <div class="chips-field">
+            <label for="in-regex"><svg class="i sm"><use href="#i-code"/></svg><span data-i18n="regexLabel"></span> <span style="color:var(--color-text-secondary);font-weight:400" data-i18n="advanced"></span></label>
+            <div class="chips" id="chips-regex" onclick="this.querySelector('input').focus()">
+              <input id="in-regex" data-i18n-ph="regexPh" spellcheck="false">
+            </div>
+            <div class="field-err" id="regex-err" hidden></div>
+          </div>
+        </div>
+      </div>
+      <div class="sidebar-foot">
+        <div class="summary" id="summary"></div>
+        <button class="btn primary lg" id="btn-encrypt" onclick="doEncrypt()"><svg class="i"><use href="#i-lock"/></svg><span data-i18n="encrypt"></span></button>
+      </div>
+    </aside>
+
+    <div class="main">
+      <div class="nokey-banner" id="nokey-banner">
+        <svg class="i"><use href="#i-alert"/></svg>
+        <span data-i18n="noKeyBanner"></span>
+        <button class="btn sm" onclick="openKeyModal()" data-i18n="setupKey"></button>
+      </div>
+      <div class="toolbar">
+        <div class="tabs" id="sheet-tabs" role="tablist" data-i18n-aria="sheetsAria"></div>
+        <button class="btn sm icon ghost" id="btn-undo" onclick="undo()" disabled data-i18n-aria="undoAria" data-i18n-title="undoTitle"><svg class="i sm"><use href="#i-undo"/></svg></button>
+        <div class="stepper" data-i18n-title="headerRowTitle">
+          <span data-i18n="headerRow"></span>
+          <span class="box">
+            <button onclick="stepHeader(-1)" data-i18n-aria="prevRow"><svg class="i sm"><use href="#i-minus"/></svg></button>
+            <output id="hdr-row" class="num">1</output>
+            <button onclick="stepHeader(1)" data-i18n-aria="nextRow"><svg class="i sm"><use href="#i-plus"/></svg></button>
+          </span>
+        </div>
+        <div class="seg sm" role="tablist" data-i18n-aria="viewAria">
+          <button role="tab" id="view-orig" aria-selected="true" onclick="setView('original')"><svg class="i sm"><use href="#i-eye"/></svg><span data-i18n="viewOrig"></span></button>
+          <button role="tab" id="view-ai" aria-selected="false" onclick="setView('ai')"><svg class="i sm"><use href="#i-bot"/></svg><span data-i18n="viewAi"></span></button>
+        </div>
+      </div>
+      <div class="table-wrap" id="tw-protect"><table class="grid" id="grid-protect"></table></div>
+      <div class="table-foot">
+        <span id="rows-info" class="num"></span>
+        <div class="legend">
+          <span><i style="background:var(--color-primary-tint);border:1px solid var(--color-primary)"></i><span data-i18n="legendProtected"></span></span>
+          <span data-i18n="legendHelp"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Restaurer : accueil ===== -->
+  <section class="view welcome" id="v-restore-empty">
+    <div class="mark"><span class="diamond"></span><span data-i18n="restore"></span></div>
+    <h1 data-i18n="restoreTitle"></h1>
+    <p class="lead" data-i18n="restoreLead"></p>
+    <button class="dropzone restore" id="dz-restore" onclick="doDecrypt()">
+      <div class="dz-icon"><svg class="i xl"><use href="#i-unlock"/></svg></div>
+      <h2 data-i18n="dropAi"></h2>
+      <p data-i18n-html="orBrowse"></p>
+      <div class="formats"><span>.xlsx</span><span>.xlsm</span><span>.csv</span><span>.tsv</span></div>
+    </button>
+    <button class="btn secondary batch-cta" onclick="batchRestoreModal()"><svg class="i sm"><use href="#i-folders"/></svg><span data-i18n="batchRestore"></span></button>
+    <div class="checklist" id="restore-checks"></div>
+  </section>
+
+  <!-- ===== Restaurer : résultat ===== -->
+  <section class="view restore-layout" id="v-restore-result">
+    <div class="result-head">
+      <div class="ok-ic"><svg class="i lg"><use href="#i-check"/></svg></div>
+      <div class="t"><b id="r-title"></b><span id="r-sub"></span></div>
+      <button class="btn secondary" id="r-reveal"><svg class="i sm"><use href="#i-folder"/></svg><span class="reveal-label"></span></button>
+      <button class="btn primary" onclick="showView('v-restore-empty')"><svg class="i sm"><use href="#i-unlock"/></svg><span data-i18n="restoreAnother"></span></button>
+    </div>
+    <div id="r-warn"></div>
+    <div class="toolbar"><div class="tabs" id="r-tabs" role="tablist" data-i18n-aria="sheetsAria"></div></div>
+    <div class="table-wrap"><table class="grid" id="grid-restore"></table></div>
+    <div class="table-foot"><span id="r-rows" class="num"></span><span data-i18n="restoredPreview"></span></div>
+  </section>
+</main>
+
+<!-- ===== modales ===== -->
+<div class="overlay" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal" id="modal-box"></div>
+</div>
+<div class="tooltip" id="tip" role="tooltip"></div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div class="drag-veil" id="veil"><div class="dz-icon"><svg class="i xl"><use href="#i-upload"/></svg></div><span id="veil-t"></span></div>
+
+
+<!-- Icônes (Lucide, licence ISC) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="i-unlock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></symbol>
+  <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></symbol>
+  <symbol id="i-sheet" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2"/><path d="M14 13h2"/><path d="M8 17h2"/><path d="M14 17h2"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></symbol>
+  <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-bot" viewBox="0 0 24 24"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></symbol>
+  <symbol id="i-type" viewBox="0 0 24 24"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></symbol>
+  <symbol id="i-rows" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M21 9H3"/><path d="M21 15H3"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 12h18"/><path d="M12 3v18"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></symbol>
+  <symbol id="i-folders" viewBox="0 0 24 24"><path d="M20 17a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3.9a2 2 0 0 1-1.69-.9l-.81-1.2a2 2 0 0 0-1.67-.9H8a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2Z"/><path d="M2 8v11a2 2 0 0 0 2 2h14"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.59 13.51 6.83 3.98"/><path d="m15.41 6.51-6.82 3.98"/></symbol>
+  <symbol id="i-tag" viewBox="0 0 24 24"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></symbol>
+  <symbol id="i-card" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/></symbol>
+  <symbol id="i-bank" viewBox="0 0 24 24"><path d="M3 22h18"/><path d="M6 18v-7"/><path d="M10 18v-7"/><path d="M14 18v-7"/><path d="M18 18v-7"/><path d="m12 2 8 5H4z"/></symbol>
+  <symbol id="i-id" viewBox="0 0 24 24"><path d="M16 10h2"/><path d="M16 14h2"/><path d="M6.17 15a3 3 0 0 1 5.66 0"/><circle cx="9" cy="11" r="2"/><rect x="2" y="5" width="20" height="14" rx="2"/></symbol>
+  <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-heading" viewBox="0 0 24 24"><path d="M6 12h12"/><path d="M6 20V4"/><path d="M18 20V4"/></symbol>
+  <!-- Drapeaux -->
+  <symbol id="f-fr" viewBox="0 0 3 2" preserveAspectRatio="none"><rect width="1" height="2" fill="#002654"/><rect x="1" width="1" height="2" fill="#fff"/><rect x="2" width="1" height="2" fill="#CE1126"/></symbol>
+  <symbol id="f-de" viewBox="0 0 5 3" preserveAspectRatio="none"><rect width="5" height="1" fill="#000"/><rect y="1" width="5" height="1" fill="#DD0000"/><rect y="2" width="5" height="1" fill="#FFCE00"/></symbol>
+  <symbol id="f-en" viewBox="0 0 60 30" preserveAspectRatio="none"><clipPath id="uk-clip"><path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z"/></clipPath><path d="M0,0 v30 h60 v-30 z" fill="#012169"/><path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" stroke-width="6"/><path d="M0,0 L60,30 M60,0 L0,30" clip-path="url(#uk-clip)" stroke="#C8102E" stroke-width="4"/><path d="M30,0 v30 M0,15 h60" stroke="#fff" stroke-width="10"/><path d="M30,0 v30 M0,15 h60" stroke="#C8102E" stroke-width="6"/></symbol>
+</svg>
+
+<script>
+"use strict";
+/* ============================================================
+   Traductions. Une valeur peut être un texte ou une fonction (pluriels, paramètres).
+   ============================================================ */
+const LANGS = [
+  { code: "fr", name: "Français", locale: "fr-FR" },
+  { code: "de", name: "Deutsch", locale: "de-DE" },
+  { code: "en", name: "English", locale: "en-GB" },
+];
+const fr_s = (n) => (n > 1 ? "s" : "");      // pluriel français (0 et 1 au singulier)
+const en_s = (n) => (n === 1 ? "" : "s");
+
+const I18N = {
+  fr: {
+    brandSub: "Pseudonymisation réversible", modeAria: "Mode", protect: "Protéger", restore: "Restaurer",
+    langAria: "Langue de l'application", keyAria: "Gérer la clé secrète", vaultAria: "Gérer le coffre",
+    welcomeTitle: "Protégez vos données avant de les confier à une IA",
+    welcomeLead: "Les colonnes sensibles sont remplacées par des jetons anonymes. L'IA travaille sur le reste, et vous restaurez les vraies valeurs en un clic.",
+    dropExcel: "Glissez votre fichier Excel ici", orBrowse: "ou <u>cliquez pour parcourir</u>",
+    step1: "Choisissez", step1Sub: "les colonnes et valeurs à masquer",
+    step2: "Envoyez", step2Sub: "la version protégée à votre IA",
+    step3: "Restaurez", step3Sub: "le fichier renvoyé avec vos vraies données",
+    change: "Changer", changeTitle: "Ouvrir un autre fichier",
+    colsTitle: "Colonnes à protéger", colsFilter: "Filtrer les colonnes…",
+    suggest: "Suggérer", suggestTitle: "Coche les colonnes qui ressemblent à des données personnelles",
+    all: "Toutes", none: "Aucune",
+    maskHeaders: "Masquer aussi les noms de colonnes", maskHeadersSub: "L'en-tête devient un jeton, restauré au retour",
+    manTitle: "Lignes et cellules", removeAll: "Tout retirer", rangeLabel: "Ajouter une plage", add: "Ajouter",
+    rangeHelp: "Cellule, zone, lignes (12-30), colonnes (D:F) ou nom de colonne. Pratique pour les lignes au-delà de l'aperçu.",
+    detectTitle: "Détecter dans tout le texte", emails: "Adresses e-mail", emailsEx: "camille.martin@exemple.fr",
+    phones: "Téléphones (FR)", phonesDe: "Téléphones (DE)", valuesLabel: "Valeurs précises", valuesPh: "ex. Stadtwerke, Weber… puis Entrée",
+    valuesHelp: "Masquées partout où elles apparaissent, même au milieu d'une phrase.",
+    regexLabel: "Motifs regex", advanced: "(avancé)", regexPh: "ex. FR\\d{12} puis Entrée",
+    encrypt: "Protéger et enregistrer",
+    noKeyBanner: "Aucune clé chargée : l'aperçu montre des jetons factices et le chiffrement est impossible.",
+    setupKey: "Configurer la clé", sheetsAria: "Feuilles",
+    undoAria: "Annuler la dernière modification de sélection", undoTitle: "Annuler (⌘Z / Ctrl+Z)",
+    headerRow: "En-têtes ligne", headerRowTitle: "Ligne contenant les en-têtes de colonnes",
+    prevRow: "Ligne précédente", nextRow: "Ligne suivante",
+    viewAria: "Affichage", viewOrig: "Original", viewAi: "Vue IA", legendProtected: "Protégé",
+    legendHelp: "Cliquez sur un en-tête, un n° de ligne ou une cellule · glissez pour une zone · Maj+clic pour étendre",
+    restoreTitle: "Récupérez vos vraies données",
+    restoreLead: "Déposez le fichier renvoyé par l'IA. Chaque jeton est retrouvé, où qu'il soit, et remplacé par la valeur d'origine.",
+    dropAi: "Glissez le fichier de l'IA ici", restoreAnother: "Restaurer un autre fichier",
+    restoredPreview: "Aperçu du fichier restauré",
+    veilOpen: "Déposez pour ouvrir le fichier", veilRestore: "Déposez le fichier de l'IA pour le restaurer",
+    revealMac: "Afficher dans le Finder", revealWin: "Afficher dans l'Explorateur", revealOther: "Ouvrir le dossier",
+    noKey: "Aucune clé", vaultUnreadable: "Coffre illisible", vaultEmpty: "Coffre vide",
+    vaultCount: (n) => `${fmt(n)} valeur${fr_s(n)}`,
+    reading: "Lecture du fichier…", openFailed: "Impossible d'ouvrir ce fichier",
+    sheetsCount: (n) => `${n} feuille${fr_s(n)}`,
+    example: "Exemple", emptyVal: "(vide)", noHeader: "Sans en-tête", sensitive: "Sensible",
+    colStats: (u, e) => `${fmt(u)} unique${fr_s(u)} · ${fmt(e)} vide${fr_s(e)}`,
+    noColMatch: "Aucune colonne ne correspond.",
+    rowLabel: (a, b) => (a === b ? `Ligne ${a}` : `Lignes ${a}-${b}`),
+    remove: "Retirer", moreZones: (n) => `+${fmt(n)} zones`, removeAllCells: "Retirer toutes les cellules",
+    manEmpty: "Cliquez sur un numéro de ligne ou sur des cellules dans le tableau.",
+    colProtect: (l) => `Protéger la colonne ${l}`, colRelease: (l) => `Libérer la colonne ${l}`,
+    rowProtect: (r) => `Protéger la ligne ${r} (Maj+clic : plage)`, rowRelease: (r) => `Libérer la ligne ${r} (Maj+clic : plage)`,
+    realValue: "Valeur réelle (reste sur votre machine)", realHeader: "Nom réel de la colonne",
+    rowsShown: (n, t) => `${fmt(n)} premières lignes affichées sur ${fmt(t)}`,
+    rowsTotal: (n) => `${fmt(n)} ligne${fr_s(n)}`,
+    sumCols: (n, e) => `${n} colonne${fr_s(n)} · ≈ ${fmt(e)} valeurs`,
+    sumRows: (n) => `${fmt(n)} ligne${fr_s(n)}`, sumCells: (n) => `${fmt(n)} cellule${fr_s(n)}`,
+    sumHeaders: "Noms de colonnes", sumEmails: "E-mails", sumPhones: "Téléphones FR", sumPhonesDe: "Téléphones DE",
+    sumValues: (n) => `${n} valeur${fr_s(n)}`, sumRegex: (n) => `${n} regex`,
+    sumEmpty: "Sélectionnez des colonnes, lignes, cellules ou une détection.",
+    suggestNone: "Aucune colonne sensible évidente sur cette feuille.",
+    suggestDone: (n) => `${n} colonne${fr_s(n)} cochée${fr_s(n)}. Vérifiez la sélection.`,
+    alreadyByCol: (ref) => `${ref} est déjà protégée par sa colonne.`,
+    alreadyByRow: (ref) => `${ref} est déjà protégée par sa ligne ou une plage.`,
+    rangeErr: (x) => `Non compris : ${x}. Exemples valides : B5, A2:C40, 12-30, D:F, Nom.`,
+    regexErr: (x) => `Motif invalide : ${x}. Corrigez-le ou retirez-le.`,
+    regexModalTitle: "Motif regex invalide", regexModalMsg: "Corrigez ou retirez les motifs en rouge avant de continuer.",
+    encryptFailed: "Le chiffrement a échoué", restoreFailed: "La restauration a échoué",
+    taskEncrypt: (f) => `Protection de ${f}`, taskDecrypt: (f) => `Restauration de ${f}`,
+    busySub: "Merci de patienter, votre fichier est traité localement.",
+    vaultMissingTitle: "Coffre introuvable",
+    vaultMissingMsg: "Aucun coffre n'est associé à cette clé. Sélectionnez le fichier .vault créé lors du chiffrement.",
+    chooseVaultBtn: "Choisir le coffre",
+    restoredToast: (n) => `${fmt(n)} valeur${fr_s(n)} restaurée${fr_s(n)}.`,
+    chkKey: "Clé secrète", notLoaded: "non chargée", configure: "Configurer", chkVault: "Coffre",
+    unreadableWithKey: "illisible avec cette clé", knownValues: (n) => `${fmt(n)} valeurs connues`, notFound: "introuvable",
+    choose: "Choisir",
+    resultTitle: (f) => `${f} est prêt`,
+    resultSub: (n, src) => `${fmt(n)} jeton${fr_s(n)} remplacé${fr_s(n)} par les vraies valeurs · depuis ${src}`,
+    unknownWarn: (n) => `<b>${n} jeton${fr_s(n)} inconnu${fr_s(n)} du coffre.</b> Fichier protégé avec une autre clé, ou jeton modifié par l'IA :`,
+    unknownTipTitle: "Jeton inconnu", unknownTip: "Absent du coffre : impossible de le restaurer.",
+    keyModalTitle: "Clé secrète et coffre", keyModalSub: "Ces deux fichiers restent sur votre machine. Ne les envoyez jamais à l'IA.",
+    key: "Clé", loaded: "Chargée", missing: "Absente", chooseKey: "Choisir une clé existante", genKey: "Générer une nouvelle clé",
+    vault: "Coffre", unreadable: "Illisible", willBeCreated: "Sera créé", chooseOtherVault: "Choisir un autre coffre",
+    keyNote: "La <b>clé</b> calcule les jetons et chiffre le coffre. Le <b>coffre</b> contient la correspondance jeton → valeur réelle. Sauvegardez les deux : sans eux, rien ne peut être restauré.",
+    close: "Fermer", keyLoaded: "Clé chargée.", invalidKey: "Clé invalide",
+    newKeyTitle: "Générer une nouvelle clé ?", newKeySub: "Une nouvelle clé produit des jetons différents et un nouveau coffre.",
+    newKeyWarn: "Les fichiers déjà protégés avec l'ancienne clé ne pourront être restaurés <b>qu'avec l'ancienne clé</b>. Conservez-la si vous en avez encore besoin.",
+    cancel: "Annuler", generate: "Générer", createFailed: "Création impossible",
+    keyCreated: "Clé créée", keyCreatedSub: "Gardez-la secrète et faites-en une sauvegarde (clé USB, gestionnaire de mots de passe…).",
+    gotIt: "Compris", vaultSelected: "Coffre sélectionné.",
+    keyReqTitle: "Une clé secrète est nécessaire",
+    keyReqSub: "Elle sert à calculer les jetons et à chiffrer le coffre. Créez-en une, ou chargez celle que vous utilisez déjà.",
+    haveKey: "J'ai déjà une clé", createKey: "Créer une clé",
+    doneTitle: "Fichier protégé", doneSub: "Vous pouvez l'envoyer à l'IA en toute tranquillité.",
+    statMasked: "valeurs masquées", statVault: "valeurs dans le coffre",
+    toSend: "À envoyer à l'IA", toKeep: "À garder pour vous, ne jamais envoyer", restoreAi: "Restaurer un retour de l'IA",
+    langTitle: "Choisissez la langue", langSub: "Vous pourrez la changer à tout moment avec le drapeau en haut à droite.",
+    langChanged: "Langue : français.",
+    err_key_invalid: "Clé invalide (attendu : 32 octets encodés en base64).",
+    err_key_missing: (p) => `Fichier clé introuvable : ${p.path}`,
+    err_vault_invalid: (p) => `« ${p.name} » n'est pas un coffre ExcelCrypt.`,
+    err_vault_bad_key: "Impossible d'ouvrir le coffre : mauvaise clé ou fichier corrompu.",
+    err_collision: "Collision de jeton détectée. Opération annulée.",
+    err_regex_invalid: (p) => `Regex invalide : ${p.pattern}`,
+    err_file_missing: (p) => `Fichier introuvable : ${p.path}`,
+    err_xls_unsupported: "Format .xls (Excel 97-2003) : ouvrez-le dans Excel et enregistrez-le en .xlsx.",
+    err_format_unsupported: (p) => `Format non supporté : ${p.ext} (supportés : .xlsx, .xlsm, .csv, .tsv, .txt)`,
+    err_vault_missing: (p) => `Coffre introuvable : ${p.name}. Sélectionnez celui utilisé au chiffrement.`,
+    err_no_key: "Aucune clé chargée.", err_no_file: "Aucun fichier ouvert.",
+    err_same_output: "Choisissez un fichier de sortie différent de l'original.",
+    err_busy: "Une opération est déjà en cours.",
+    err_write_denied: (p) => `Impossible d'écrire ${p.name} : le fichier est peut-être ouvert dans Excel.`,
+    err_read_failed: (p) => `Lecture impossible : ${p.detail}`,
+    err_encrypt_failed: (p) => `Échec du chiffrement : ${p.detail}`,
+    err_decrypt_failed: (p) => `Échec du déchiffrement : ${p.detail}`,
+
+    // --- détecteurs
+    grpContact: "Coordonnées", grpBank: "Banque", grpIds: "Identifiants",
+    det_email: "Adresses e-mail", det_phone_fr: "Téléphones (FR)", det_phone_de: "Téléphones (DE)",
+    det_iban: "IBAN", det_card: "Cartes bancaires", det_vat: "N° de TVA intracommunautaire",
+    det_steuer_id: "Steuer-ID (DE)", det_nir: "N° de sécurité sociale (FR)", det_rvnr: "N° de sécurité sociale (DE)",
+    det_siret: "SIRET", det_regex: "Motif regex", det_masked_value: "Valeur protégée visible ailleurs",
+    sumDetectors: (n) => `${n} détection${fr_s(n)}`,
+    // --- options de colonnes
+    propagate: "Masquer aussi ces valeurs ailleurs", propagateSub: "Un nom protégé dans une colonne est aussi masqué dans les commentaires",
+    readable: "Jetons lisibles", readableSub: "CONTACT_0042 au lieu de ENC_9f3a…, plus clair pour l'IA",
+    sumPropagate: "Propagation", sumReadable: "Jetons lisibles",
+    // --- profils
+    profile: "Profil", noProfile: "Aucun profil", saveProfile: "Enregistrer", deleteProfileAria: "Supprimer le profil",
+    profileApplied: (n, c) => `Profil « ${n} » appliqué : ${c} colonne${fr_s(c)}.`,
+    profileAuto: (n) => `Profil « ${n} » appliqué automatiquement.`, undoAction: "Annuler",
+    saveProfileTitle: "Enregistrer le profil", saveProfileSub: "Les colonnes sont retrouvées par leur nom dans les prochains fichiers.",
+    profileName: "Nom du profil", profileNamePh: "ex. Export clients SAP",
+    profileContent: "Contenu", profileCols: (n) => `${n} colonne${fr_s(n)}`, profileNone: "Aucune colonne nommée",
+    profileNoPositions: "Les lignes et cellules cochées à la main ne sont pas enregistrées (elles dépendent du fichier).",
+    profileSaved: (n) => `Profil « ${n} » enregistré.`, profileOverwrite: "Un profil porte déjà ce nom : il sera remplacé.",
+    deleteProfileTitle: (n) => `Supprimer le profil « ${n} » ?`, deleteProfileSub: "Les fichiers déjà protégés ne sont pas concernés.",
+    delete: "Supprimer", profileDeleted: "Profil supprimé.", nothingToSave: "Cochez au moins une colonne avec un en-tête, ou une option.",
+    // --- contrôle avant envoi
+    scanTitle: "Contrôle avant envoi", scanSub: (n) => `${n} élément${fr_s(n)} ressemble${n > 1 ? "nt" : ""} encore à des données personnelles.`,
+    scanWhere: (s, l, h) => `${s} › ${l}${h ? ` (${h})` : ""}`, scanCount: (n) => `${fmt(n)} occurrence${fr_s(n)}`,
+    scanFixDetector: (d) => `Activer « ${d} »`, scanFixPropagate: "Activer « Masquer aussi ces valeurs ailleurs »",
+    scanBack: "Revenir", scanIgnore: "Envoyer quand même", scanFix: "Corriger et protéger",
+    scanClean: "Contrôle avant envoi : aucune donnée personnelle visible hors des zones protégées.",
+    scanSkipped: "Contrôle avant envoi ignoré : des données personnelles peuvent rester visibles.",
+    taskScan: (f) => `Contrôle de ${f}`,
+    // --- mot de passe
+    keyLocked: "Clé verrouillée", unlockTitle: "Déverrouiller la clé", unlockSub: (n) => `« ${n} » est protégée par un mot de passe.`,
+    password: "Mot de passe", unlock: "Déverrouiller", showPassword: "Afficher le mot de passe", hidePassword: "Masquer le mot de passe",
+    passwordSection: "Mot de passe", pwOn: "Activé", pwOff: "Aucun", setPassword: "Définir un mot de passe", changePassword: "Changer",
+    removePassword: "Retirer", pwTitle: "Mot de passe de la clé",
+    pwSub: "Sans ce mot de passe, un fichier .key copié ou un PC volé ne suffit plus à déchiffrer vos données. La clé et les jetons ne changent pas.",
+    newPassword: "Nouveau mot de passe", confirmPassword: "Confirmez le mot de passe", pwTooShort: "8 caractères minimum.",
+    pwMismatch: "Les deux mots de passe ne correspondent pas.", pwSaved: "Mot de passe enregistré.", pwRemoved: "Mot de passe retiré.",
+    pwOptional: "Mot de passe (recommandé)", pwOptionalHelp: "Laissez vide pour une clé sans mot de passe.",
+    pwForgot: "Un mot de passe oublié ne peut pas être récupéré : notez-le dans votre gestionnaire de mots de passe.",
+    removePwTitle: "Retirer le mot de passe ?", removePwSub: "Toute personne qui copie le fichier .key pourra alors déchiffrer vos données.",
+    // --- lots
+    batchProtect: "Protéger tout un dossier…", batchRestore: "Restaurer tout un dossier…", batchWithProfile: "Appliquer à un dossier…",
+    batchTitle: "Protéger un dossier", batchSub: "Chaque fichier Excel ou CSV du dossier est protégé avec le profil choisi. Vous choisirez ensuite le dossier source, puis le dossier de sortie.",
+    batchNoProfile: "Aucun profil pour l'instant. Ouvrez un fichier, sélectionnez les colonnes, puis cliquez sur « Enregistrer » dans la section Profil.",
+    chooseFolder: "Choisir le dossier…", batchRestoreTitle: "Restaurer un dossier",
+    batchRestoreSub: "Chaque fichier du dossier est restauré avec la clé et le coffre actuels. Vous choisirez ensuite le dossier source, puis le dossier de sortie.",
+    batchRunning: (i, n) => `Fichier ${Math.min(i + 1, n)} sur ${n}`, batchDone: "Traitement terminé",
+    batchSummary: (ok, n) => `${ok} fichier${fr_s(ok)} sur ${n} traité${fr_s(ok)}.`,
+    batchMasked: (n) => `${fmt(n)} valeur${fr_s(n)} masquée${fr_s(n)}`, batchRestored: (n) => `${fmt(n)} valeur${fr_s(n)} restaurée${fr_s(n)}`,
+    batchLeaks: (n) => `${fmt(n)} fuite${fr_s(n)} possible${fr_s(n)}`, batchUnknown: (n) => `${fmt(n)} jeton${fr_s(n)} inconnu${fr_s(n)}`,
+    openFolder: "Ouvrir le dossier",
+    err_key_locked: "La clé est protégée par un mot de passe.", err_key_bad_password: "Mot de passe incorrect.",
+    err_profile_name: "Donnez un nom au profil.", err_profile_missing: (p) => `Profil introuvable : ${p.name}`,
+    err_batch_empty: (p) => `Aucun fichier Excel ou CSV dans le dossier « ${p.name} ».`,
+  },
+
+  de: {
+    brandSub: "Reversible Pseudonymisierung", modeAria: "Modus", protect: "Schützen", restore: "Wiederherstellen",
+    langAria: "Sprache der Anwendung", keyAria: "Geheimen Schlüssel verwalten", vaultAria: "Tresor verwalten",
+    welcomeTitle: "Schützen Sie Ihre Daten, bevor Sie sie einer KI anvertrauen",
+    welcomeLead: "Sensible Spalten werden durch anonyme Token ersetzt. Die KI arbeitet mit dem Rest, und Sie stellen die echten Werte mit einem Klick wieder her.",
+    dropExcel: "Excel-Datei hierher ziehen", orBrowse: "oder <u>zum Durchsuchen klicken</u>",
+    step1: "Auswählen", step1Sub: "die zu maskierenden Spalten und Werte",
+    step2: "Senden", step2Sub: "die geschützte Version an Ihre KI",
+    step3: "Wiederherstellen", step3Sub: "die zurückgegebene Datei mit Ihren echten Daten",
+    change: "Ändern", changeTitle: "Andere Datei öffnen",
+    colsTitle: "Zu schützende Spalten", colsFilter: "Spalten filtern…",
+    suggest: "Vorschlagen", suggestTitle: "Markiert Spalten, die wie personenbezogene Daten aussehen",
+    all: "Alle", none: "Keine",
+    maskHeaders: "Auch Spaltennamen maskieren", maskHeadersSub: "Die Überschrift wird zum Token und später wiederhergestellt",
+    manTitle: "Zeilen und Zellen", removeAll: "Alle entfernen", rangeLabel: "Bereich hinzufügen", add: "Hinzufügen",
+    rangeHelp: "Zelle, Bereich, Zeilen (12-30), Spalten (D:F) oder Spaltenname. Praktisch für Zeilen außerhalb der Vorschau.",
+    detectTitle: "Im gesamten Text erkennen", emails: "E-Mail-Adressen", emailsEx: "lukas.weber@beispiel.de",
+    phones: "Telefonnummern (FR)", phonesDe: "Telefonnummern (DE)", valuesLabel: "Bestimmte Werte", valuesPh: "z. B. Stadtwerke, Weber… dann Enter",
+    valuesHelp: "Überall maskiert, wo sie vorkommen, auch mitten im Satz.",
+    regexLabel: "Regex-Muster", advanced: "(erweitert)", regexPh: "z. B. DE\\d{20} dann Enter",
+    encrypt: "Schützen und speichern",
+    noKeyBanner: "Kein Schlüssel geladen: Die Vorschau zeigt Platzhalter-Token, die Verschlüsselung ist nicht möglich.",
+    setupKey: "Schlüssel einrichten", sheetsAria: "Tabellenblätter",
+    undoAria: "Letzte Auswahländerung rückgängig machen", undoTitle: "Rückgängig (⌘Z / Strg+Z)",
+    headerRow: "Überschriften in Zeile", headerRowTitle: "Zeile mit den Spaltenüberschriften",
+    prevRow: "Vorherige Zeile", nextRow: "Nächste Zeile",
+    viewAria: "Ansicht", viewOrig: "Original", viewAi: "KI-Ansicht", legendProtected: "Geschützt",
+    legendHelp: "Überschrift, Zeilennummer oder Zelle anklicken · ziehen für einen Bereich · Umschalt+Klick zum Erweitern",
+    restoreTitle: "Holen Sie Ihre echten Daten zurück",
+    restoreLead: "Legen Sie die von der KI zurückgegebene Datei ab. Jedes Token wird gefunden, wo auch immer es steht, und durch den Originalwert ersetzt.",
+    dropAi: "Datei der KI hierher ziehen", restoreAnother: "Weitere Datei wiederherstellen",
+    restoredPreview: "Vorschau der wiederhergestellten Datei",
+    veilOpen: "Zum Öffnen ablegen", veilRestore: "KI-Datei zum Wiederherstellen ablegen",
+    revealMac: "Im Finder zeigen", revealWin: "Im Explorer zeigen", revealOther: "Ordner öffnen",
+    noKey: "Kein Schlüssel", vaultUnreadable: "Tresor unlesbar", vaultEmpty: "Tresor leer",
+    vaultCount: (n) => `${fmt(n)} ${n === 1 ? "Wert" : "Werte"}`,
+    reading: "Datei wird gelesen…", openFailed: "Datei kann nicht geöffnet werden",
+    sheetsCount: (n) => `${n} ${n === 1 ? "Tabellenblatt" : "Tabellenblätter"}`,
+    example: "Beispiel", emptyVal: "(leer)", noHeader: "Ohne Überschrift", sensitive: "Sensibel",
+    colStats: (u, e) => `${fmt(u)} eindeutig · ${fmt(e)} leer`,
+    noColMatch: "Keine passende Spalte.",
+    rowLabel: (a, b) => (a === b ? `Zeile ${a}` : `Zeilen ${a}-${b}`),
+    remove: "Entfernen", moreZones: (n) => `+${fmt(n)} Bereiche`, removeAllCells: "Alle Zellen entfernen",
+    manEmpty: "Klicken Sie in der Tabelle auf eine Zeilennummer oder auf Zellen.",
+    colProtect: (l) => `Spalte ${l} schützen`, colRelease: (l) => `Spalte ${l} freigeben`,
+    rowProtect: (r) => `Zeile ${r} schützen (Umschalt+Klick: Bereich)`, rowRelease: (r) => `Zeile ${r} freigeben (Umschalt+Klick: Bereich)`,
+    realValue: "Echter Wert (bleibt auf Ihrem Rechner)", realHeader: "Echter Spaltenname",
+    rowsShown: (n, t) => `Erste ${fmt(n)} von ${fmt(t)} Zeilen angezeigt`,
+    rowsTotal: (n) => `${fmt(n)} ${n === 1 ? "Zeile" : "Zeilen"}`,
+    sumCols: (n, e) => `${n} ${n === 1 ? "Spalte" : "Spalten"} · ≈ ${fmt(e)} Werte`,
+    sumRows: (n) => `${fmt(n)} ${n === 1 ? "Zeile" : "Zeilen"}`, sumCells: (n) => `${fmt(n)} ${n === 1 ? "Zelle" : "Zellen"}`,
+    sumHeaders: "Spaltennamen", sumEmails: "E-Mails", sumPhones: "Telefon FR", sumPhonesDe: "Telefon DE",
+    sumValues: (n) => `${n} ${n === 1 ? "Wert" : "Werte"}`, sumRegex: (n) => `${n} Regex`,
+    sumEmpty: "Wählen Sie Spalten, Zeilen, Zellen oder eine Erkennung.",
+    suggestNone: "Keine offensichtlich sensible Spalte in diesem Blatt.",
+    suggestDone: (n) => `${n} ${n === 1 ? "Spalte" : "Spalten"} markiert. Bitte Auswahl prüfen.`,
+    alreadyByCol: (ref) => `${ref} ist bereits durch ihre Spalte geschützt.`,
+    alreadyByRow: (ref) => `${ref} ist bereits durch ihre Zeile oder einen Bereich geschützt.`,
+    rangeErr: (x) => `Nicht erkannt: ${x}. Gültige Beispiele: B5, A2:C40, 12-30, D:F, Name.`,
+    regexErr: (x) => `Ungültiges Muster: ${x}. Bitte korrigieren oder entfernen.`,
+    regexModalTitle: "Ungültiges Regex-Muster", regexModalMsg: "Korrigieren oder entfernen Sie die rot markierten Muster, bevor Sie fortfahren.",
+    encryptFailed: "Verschlüsselung fehlgeschlagen", restoreFailed: "Wiederherstellung fehlgeschlagen",
+    taskEncrypt: (f) => `${f} wird geschützt`, taskDecrypt: (f) => `${f} wird wiederhergestellt`,
+    busySub: "Bitte warten, Ihre Datei wird lokal verarbeitet.",
+    vaultMissingTitle: "Tresor nicht gefunden",
+    vaultMissingMsg: "Zu diesem Schlüssel gehört kein Tresor. Wählen Sie die beim Verschlüsseln erstellte .vault-Datei.",
+    chooseVaultBtn: "Tresor wählen",
+    restoredToast: (n) => `${fmt(n)} ${n === 1 ? "Wert" : "Werte"} wiederhergestellt.`,
+    chkKey: "Geheimer Schlüssel", notLoaded: "nicht geladen", configure: "Einrichten", chkVault: "Tresor",
+    unreadableWithKey: "mit diesem Schlüssel unlesbar", knownValues: (n) => `${fmt(n)} bekannte Werte`, notFound: "nicht gefunden",
+    choose: "Wählen",
+    resultTitle: (f) => `${f} ist fertig`,
+    resultSub: (n, src) => `${fmt(n)} Token durch echte Werte ersetzt · aus ${src}`,
+    unknownWarn: (n) => `<b>${n} Token im Tresor unbekannt.</b> Datei mit einem anderen Schlüssel geschützt oder Token von der KI verändert:`,
+    unknownTipTitle: "Unbekanntes Token", unknownTip: "Nicht im Tresor: kann nicht wiederhergestellt werden.",
+    keyModalTitle: "Geheimer Schlüssel und Tresor", keyModalSub: "Beide Dateien bleiben auf Ihrem Rechner. Senden Sie sie niemals an die KI.",
+    key: "Schlüssel", loaded: "Geladen", missing: "Fehlt", chooseKey: "Vorhandenen Schlüssel wählen", genKey: "Neuen Schlüssel erzeugen",
+    vault: "Tresor", unreadable: "Unlesbar", willBeCreated: "Wird erstellt", chooseOtherVault: "Anderen Tresor wählen",
+    keyNote: "Der <b>Schlüssel</b> berechnet die Token und verschlüsselt den Tresor. Der <b>Tresor</b> enthält die Zuordnung Token → echter Wert. Sichern Sie beide: Ohne sie kann nichts wiederhergestellt werden.",
+    close: "Schließen", keyLoaded: "Schlüssel geladen.", invalidKey: "Ungültiger Schlüssel",
+    newKeyTitle: "Neuen Schlüssel erzeugen?", newKeySub: "Ein neuer Schlüssel erzeugt andere Token und einen neuen Tresor.",
+    newKeyWarn: "Bereits geschützte Dateien lassen sich <b>nur mit dem alten Schlüssel</b> wiederherstellen. Bewahren Sie ihn auf, falls Sie ihn noch brauchen.",
+    cancel: "Abbrechen", generate: "Erzeugen", createFailed: "Erstellung nicht möglich",
+    keyCreated: "Schlüssel erstellt", keyCreatedSub: "Halten Sie ihn geheim und legen Sie eine Sicherung an (USB-Stick, Passwort-Manager…).",
+    gotIt: "Verstanden", vaultSelected: "Tresor ausgewählt.",
+    keyReqTitle: "Ein geheimer Schlüssel wird benötigt",
+    keyReqSub: "Er berechnet die Token und verschlüsselt den Tresor. Erstellen Sie einen oder laden Sie Ihren vorhandenen Schlüssel.",
+    haveKey: "Ich habe bereits einen Schlüssel", createKey: "Schlüssel erstellen",
+    doneTitle: "Datei geschützt", doneSub: "Sie können sie bedenkenlos an die KI senden.",
+    statMasked: "maskierte Werte", statVault: "Werte im Tresor",
+    toSend: "An die KI senden", toKeep: "Für Sie behalten, niemals versenden", restoreAi: "KI-Ergebnis wiederherstellen",
+    langTitle: "Sprache wählen", langSub: "Sie können sie jederzeit über die Flagge oben rechts ändern.",
+    langChanged: "Sprache: Deutsch.",
+    err_key_invalid: "Ungültiger Schlüssel (erwartet: 32 Bytes in Base64).",
+    err_key_missing: (p) => `Schlüsseldatei nicht gefunden: ${p.path}`,
+    err_vault_invalid: (p) => `„${p.name}“ ist kein ExcelCrypt-Tresor.`,
+    err_vault_bad_key: "Tresor kann nicht geöffnet werden: falscher Schlüssel oder beschädigte Datei.",
+    err_collision: "Token-Kollision erkannt. Vorgang abgebrochen.",
+    err_regex_invalid: (p) => `Ungültiges Regex-Muster: ${p.pattern}`,
+    err_file_missing: (p) => `Datei nicht gefunden: ${p.path}`,
+    err_xls_unsupported: "Format .xls (Excel 97-2003): Öffnen Sie die Datei in Excel und speichern Sie sie als .xlsx.",
+    err_format_unsupported: (p) => `Nicht unterstütztes Format: ${p.ext} (unterstützt: .xlsx, .xlsm, .csv, .tsv, .txt)`,
+    err_vault_missing: (p) => `Tresor nicht gefunden: ${p.name}. Wählen Sie den beim Verschlüsseln verwendeten Tresor.`,
+    err_no_key: "Kein Schlüssel geladen.", err_no_file: "Keine Datei geöffnet.",
+    err_same_output: "Wählen Sie eine andere Ausgabedatei als das Original.",
+    err_busy: "Es läuft bereits ein Vorgang.",
+    err_write_denied: (p) => `${p.name} kann nicht geschrieben werden: Die Datei ist möglicherweise in Excel geöffnet.`,
+    err_read_failed: (p) => `Lesen nicht möglich: ${p.detail}`,
+    err_encrypt_failed: (p) => `Verschlüsselung fehlgeschlagen: ${p.detail}`,
+    err_decrypt_failed: (p) => `Entschlüsselung fehlgeschlagen: ${p.detail}`,
+
+    grpContact: "Kontaktdaten", grpBank: "Bank", grpIds: "Kennnummern",
+    det_email: "E-Mail-Adressen", det_phone_fr: "Telefonnummern (FR)", det_phone_de: "Telefonnummern (DE)",
+    det_iban: "IBAN", det_card: "Kreditkarten", det_vat: "USt-IdNr.",
+    det_steuer_id: "Steuer-ID", det_nir: "Sozialversicherungsnr. (FR)", det_rvnr: "Rentenversicherungsnr. (DE)",
+    det_siret: "SIRET (FR)", det_regex: "Regex-Muster", det_masked_value: "Geschützter Wert anderswo sichtbar",
+    sumDetectors: (n) => `${n} ${n === 1 ? "Erkennung" : "Erkennungen"}`,
+    propagate: "Diese Werte auch anderswo maskieren", propagateSub: "Ein geschützter Name wird auch in Kommentaren maskiert",
+    readable: "Lesbare Token", readableSub: "KONTAKT_0042 statt ENC_9f3a…, verständlicher für die KI",
+    sumPropagate: "Weitergabe", sumReadable: "Lesbare Token",
+    profile: "Profil", noProfile: "Kein Profil", saveProfile: "Speichern", deleteProfileAria: "Profil löschen",
+    profileApplied: (n, c) => `Profil „${n}“ angewendet: ${c} ${c === 1 ? "Spalte" : "Spalten"}.`,
+    profileAuto: (n) => `Profil „${n}“ automatisch angewendet.`, undoAction: "Rückgängig",
+    saveProfileTitle: "Profil speichern", saveProfileSub: "Die Spalten werden in künftigen Dateien anhand ihres Namens gefunden.",
+    profileName: "Profilname", profileNamePh: "z. B. SAP-Kundenexport",
+    profileContent: "Inhalt", profileCols: (n) => `${n} ${n === 1 ? "Spalte" : "Spalten"}`, profileNone: "Keine benannte Spalte",
+    profileNoPositions: "Manuell markierte Zeilen und Zellen werden nicht gespeichert (sie hängen von der Datei ab).",
+    profileSaved: (n) => `Profil „${n}“ gespeichert.`, profileOverwrite: "Ein Profil mit diesem Namen existiert bereits und wird ersetzt.",
+    deleteProfileTitle: (n) => `Profil „${n}“ löschen?`, deleteProfileSub: "Bereits geschützte Dateien sind nicht betroffen.",
+    delete: "Löschen", profileDeleted: "Profil gelöscht.", nothingToSave: "Markieren Sie mindestens eine Spalte mit Überschrift oder eine Option.",
+    scanTitle: "Prüfung vor dem Senden", scanSub: (n) => `${n} ${n === 1 ? "Element sieht" : "Elemente sehen"} noch nach personenbezogenen Daten aus.`,
+    scanWhere: (s, l, h) => `${s} › ${l}${h ? ` (${h})` : ""}`, scanCount: (n) => `${fmt(n)}×`,
+    scanFixDetector: (d) => `„${d}“ aktivieren`, scanFixPropagate: "„Diese Werte auch anderswo maskieren“ aktivieren",
+    scanBack: "Zurück", scanIgnore: "Trotzdem senden", scanFix: "Korrigieren und schützen",
+    scanClean: "Prüfung vor dem Senden: keine personenbezogenen Daten außerhalb der geschützten Bereiche sichtbar.",
+    scanSkipped: "Prüfung übersprungen: personenbezogene Daten können sichtbar bleiben.",
+    taskScan: (f) => `${f} wird geprüft`,
+    keyLocked: "Schlüssel gesperrt", unlockTitle: "Schlüssel entsperren", unlockSub: (n) => `„${n}“ ist durch ein Passwort geschützt.`,
+    password: "Passwort", unlock: "Entsperren", showPassword: "Passwort anzeigen", hidePassword: "Passwort verbergen",
+    passwordSection: "Passwort", pwOn: "Aktiv", pwOff: "Keins", setPassword: "Passwort festlegen", changePassword: "Ändern",
+    removePassword: "Entfernen", pwTitle: "Passwort des Schlüssels",
+    pwSub: "Ohne dieses Passwort reicht eine kopierte .key-Datei oder ein gestohlener PC nicht mehr aus, um Ihre Daten zu entschlüsseln. Schlüssel und Token ändern sich nicht.",
+    newPassword: "Neues Passwort", confirmPassword: "Passwort bestätigen", pwTooShort: "Mindestens 8 Zeichen.",
+    pwMismatch: "Die Passwörter stimmen nicht überein.", pwSaved: "Passwort gespeichert.", pwRemoved: "Passwort entfernt.",
+    pwOptional: "Passwort (empfohlen)", pwOptionalHelp: "Leer lassen für einen Schlüssel ohne Passwort.",
+    pwForgot: "Ein vergessenes Passwort kann nicht wiederhergestellt werden: Speichern Sie es in Ihrem Passwort-Manager.",
+    removePwTitle: "Passwort entfernen?", removePwSub: "Dann kann jeder, der die .key-Datei kopiert, Ihre Daten entschlüsseln.",
+    batchProtect: "Ganzen Ordner schützen…", batchRestore: "Ganzen Ordner wiederherstellen…", batchWithProfile: "Auf einen Ordner anwenden…",
+    batchTitle: "Ordner schützen", batchSub: "Jede Excel- oder CSV-Datei im Ordner wird mit dem gewählten Profil geschützt. Danach wählen Sie den Quell- und den Zielordner.",
+    batchNoProfile: "Noch kein Profil. Öffnen Sie eine Datei, wählen Sie die Spalten und klicken Sie im Bereich Profil auf „Speichern“.",
+    chooseFolder: "Ordner wählen…", batchRestoreTitle: "Ordner wiederherstellen",
+    batchRestoreSub: "Jede Datei im Ordner wird mit dem aktuellen Schlüssel und Tresor wiederhergestellt. Danach wählen Sie den Quell- und den Zielordner.",
+    batchRunning: (i, n) => `Datei ${Math.min(i + 1, n)} von ${n}`, batchDone: "Verarbeitung abgeschlossen",
+    batchSummary: (ok, n) => `${ok} von ${n} ${n === 1 ? "Datei" : "Dateien"} verarbeitet.`,
+    batchMasked: (n) => `${fmt(n)} ${n === 1 ? "Wert" : "Werte"} maskiert`, batchRestored: (n) => `${fmt(n)} ${n === 1 ? "Wert" : "Werte"} wiederhergestellt`,
+    batchLeaks: (n) => `${fmt(n)} mögliche ${n === 1 ? "Lücke" : "Lücken"}`, batchUnknown: (n) => `${fmt(n)} unbekannte Token`,
+    openFolder: "Ordner öffnen",
+    err_key_locked: "Der Schlüssel ist durch ein Passwort geschützt.", err_key_bad_password: "Falsches Passwort.",
+    err_profile_name: "Geben Sie dem Profil einen Namen.", err_profile_missing: (p) => `Profil nicht gefunden: ${p.name}`,
+    err_batch_empty: (p) => `Keine Excel- oder CSV-Datei im Ordner „${p.name}“.`,
+  },
+
+  en: {
+    brandSub: "Reversible pseudonymisation", modeAria: "Mode", protect: "Protect", restore: "Restore",
+    langAria: "Application language", keyAria: "Manage secret key", vaultAria: "Manage vault",
+    welcomeTitle: "Protect your data before handing it to an AI",
+    welcomeLead: "Sensitive columns are replaced with anonymous tokens. The AI works on the rest, and you restore the real values in one click.",
+    dropExcel: "Drop your Excel file here", orBrowse: "or <u>click to browse</u>",
+    step1: "Choose", step1Sub: "the columns and values to mask",
+    step2: "Send", step2Sub: "the protected version to your AI",
+    step3: "Restore", step3Sub: "the returned file with your real data",
+    change: "Change", changeTitle: "Open another file",
+    colsTitle: "Columns to protect", colsFilter: "Filter columns…",
+    suggest: "Suggest", suggestTitle: "Ticks the columns that look like personal data",
+    all: "All", none: "None",
+    maskHeaders: "Also mask column names", maskHeadersSub: "The header becomes a token, restored on return",
+    manTitle: "Rows and cells", removeAll: "Remove all", rangeLabel: "Add a range", add: "Add",
+    rangeHelp: "Cell, area, rows (12-30), columns (D:F) or column name. Handy for rows beyond the preview.",
+    detectTitle: "Detect in all text", emails: "Email addresses", emailsEx: "anna.schmidt@example.com",
+    phones: "Phone numbers (FR)", phonesDe: "Phone numbers (DE)", valuesLabel: "Specific values", valuesPh: "e.g. Stadtwerke, Weber… then Enter",
+    valuesHelp: "Masked wherever they appear, even mid-sentence.",
+    regexLabel: "Regex patterns", advanced: "(advanced)", regexPh: "e.g. FR\\d{12} then Enter",
+    encrypt: "Protect and save",
+    noKeyBanner: "No key loaded: the preview shows placeholder tokens and encryption is disabled.",
+    setupKey: "Set up key", sheetsAria: "Sheets",
+    undoAria: "Undo last selection change", undoTitle: "Undo (⌘Z / Ctrl+Z)",
+    headerRow: "Header row", headerRowTitle: "Row containing the column headers",
+    prevRow: "Previous row", nextRow: "Next row",
+    viewAria: "View", viewOrig: "Original", viewAi: "AI view", legendProtected: "Protected",
+    legendHelp: "Click a header, row number or cell · drag for an area · Shift+click to extend",
+    restoreTitle: "Get your real data back",
+    restoreLead: "Drop the file returned by the AI. Every token is found, wherever it is, and replaced with the original value.",
+    dropAi: "Drop the AI's file here", restoreAnother: "Restore another file",
+    restoredPreview: "Preview of the restored file",
+    veilOpen: "Drop to open the file", veilRestore: "Drop the AI's file to restore it",
+    revealMac: "Show in Finder", revealWin: "Show in Explorer", revealOther: "Open folder",
+    noKey: "No key", vaultUnreadable: "Vault unreadable", vaultEmpty: "Empty vault",
+    vaultCount: (n) => `${fmt(n)} value${en_s(n)}`,
+    reading: "Reading file…", openFailed: "Cannot open this file",
+    sheetsCount: (n) => `${n} sheet${en_s(n)}`,
+    example: "Example", emptyVal: "(empty)", noHeader: "No header", sensitive: "Sensitive",
+    colStats: (u, e) => `${fmt(u)} unique · ${fmt(e)} empty`,
+    noColMatch: "No matching column.",
+    rowLabel: (a, b) => (a === b ? `Row ${a}` : `Rows ${a}-${b}`),
+    remove: "Remove", moreZones: (n) => `+${fmt(n)} areas`, removeAllCells: "Remove all cells",
+    manEmpty: "Click a row number or cells in the table.",
+    colProtect: (l) => `Protect column ${l}`, colRelease: (l) => `Release column ${l}`,
+    rowProtect: (r) => `Protect row ${r} (Shift+click: range)`, rowRelease: (r) => `Release row ${r} (Shift+click: range)`,
+    realValue: "Real value (stays on your machine)", realHeader: "Real column name",
+    rowsShown: (n, t) => `First ${fmt(n)} of ${fmt(t)} rows shown`,
+    rowsTotal: (n) => `${fmt(n)} row${en_s(n)}`,
+    sumCols: (n, e) => `${n} column${en_s(n)} · ≈ ${fmt(e)} values`,
+    sumRows: (n) => `${fmt(n)} row${en_s(n)}`, sumCells: (n) => `${fmt(n)} cell${en_s(n)}`,
+    sumHeaders: "Column names", sumEmails: "Emails", sumPhones: "Phones FR", sumPhonesDe: "Phones DE",
+    sumValues: (n) => `${n} value${en_s(n)}`, sumRegex: (n) => `${n} regex`,
+    sumEmpty: "Select columns, rows, cells or a detection.",
+    suggestNone: "No obviously sensitive column on this sheet.",
+    suggestDone: (n) => `${n} column${en_s(n)} ticked. Please check the selection.`,
+    alreadyByCol: (ref) => `${ref} is already protected by its column.`,
+    alreadyByRow: (ref) => `${ref} is already protected by its row or a range.`,
+    rangeErr: (x) => `Not understood: ${x}. Valid examples: B5, A2:C40, 12-30, D:F, Name.`,
+    regexErr: (x) => `Invalid pattern: ${x}. Fix or remove it.`,
+    regexModalTitle: "Invalid regex pattern", regexModalMsg: "Fix or remove the patterns shown in red before continuing.",
+    encryptFailed: "Encryption failed", restoreFailed: "Restore failed",
+    taskEncrypt: (f) => `Protecting ${f}`, taskDecrypt: (f) => `Restoring ${f}`,
+    busySub: "Please wait, your file is processed locally.",
+    vaultMissingTitle: "Vault not found",
+    vaultMissingMsg: "No vault is linked to this key. Select the .vault file created during encryption.",
+    chooseVaultBtn: "Choose vault",
+    restoredToast: (n) => `${fmt(n)} value${en_s(n)} restored.`,
+    chkKey: "Secret key", notLoaded: "not loaded", configure: "Set up", chkVault: "Vault",
+    unreadableWithKey: "unreadable with this key", knownValues: (n) => `${fmt(n)} known values`, notFound: "not found",
+    choose: "Choose",
+    resultTitle: (f) => `${f} is ready`,
+    resultSub: (n, src) => `${fmt(n)} token${en_s(n)} replaced with real values · from ${src}`,
+    unknownWarn: (n) => `<b>${n} token${en_s(n)} unknown to the vault.</b> File protected with another key, or token altered by the AI:`,
+    unknownTipTitle: "Unknown token", unknownTip: "Not in the vault: cannot be restored.",
+    keyModalTitle: "Secret key and vault", keyModalSub: "Both files stay on your machine. Never send them to the AI.",
+    key: "Key", loaded: "Loaded", missing: "Missing", chooseKey: "Choose an existing key", genKey: "Generate a new key",
+    vault: "Vault", unreadable: "Unreadable", willBeCreated: "Will be created", chooseOtherVault: "Choose another vault",
+    keyNote: "The <b>key</b> computes the tokens and encrypts the vault. The <b>vault</b> holds the token → real value mapping. Back up both: without them nothing can be restored.",
+    close: "Close", keyLoaded: "Key loaded.", invalidKey: "Invalid key",
+    newKeyTitle: "Generate a new key?", newKeySub: "A new key produces different tokens and a new vault.",
+    newKeyWarn: "Files already protected with the old key can <b>only be restored with the old key</b>. Keep it if you still need it.",
+    cancel: "Cancel", generate: "Generate", createFailed: "Could not create the key",
+    keyCreated: "Key created", keyCreatedSub: "Keep it secret and back it up (USB drive, password manager…).",
+    gotIt: "Got it", vaultSelected: "Vault selected.",
+    keyReqTitle: "A secret key is required",
+    keyReqSub: "It computes the tokens and encrypts the vault. Create one, or load the one you already use.",
+    haveKey: "I already have a key", createKey: "Create a key",
+    doneTitle: "File protected", doneSub: "You can safely send it to the AI.",
+    statMasked: "values masked", statVault: "values in the vault",
+    toSend: "Send to the AI", toKeep: "Keep for yourself, never send", restoreAi: "Restore an AI result",
+    langTitle: "Choose your language", langSub: "You can change it at any time with the flag in the top right corner.",
+    langChanged: "Language: English.",
+    err_key_invalid: "Invalid key (expected 32 base64-encoded bytes).",
+    err_key_missing: (p) => `Key file not found: ${p.path}`,
+    err_vault_invalid: (p) => `"${p.name}" is not an ExcelCrypt vault.`,
+    err_vault_bad_key: "Cannot open the vault: wrong key or corrupted file.",
+    err_collision: "Token collision detected. Operation cancelled.",
+    err_regex_invalid: (p) => `Invalid regex: ${p.pattern}`,
+    err_file_missing: (p) => `File not found: ${p.path}`,
+    err_xls_unsupported: ".xls format (Excel 97-2003): open it in Excel and save it as .xlsx.",
+    err_format_unsupported: (p) => `Unsupported format: ${p.ext} (supported: .xlsx, .xlsm, .csv, .tsv, .txt)`,
+    err_vault_missing: (p) => `Vault not found: ${p.name}. Select the one used for encryption.`,
+    err_no_key: "No key loaded.", err_no_file: "No file open.",
+    err_same_output: "Choose an output file different from the original.",
+    err_busy: "An operation is already running.",
+    err_write_denied: (p) => `Cannot write ${p.name}: the file may be open in Excel.`,
+    err_read_failed: (p) => `Cannot read the file: ${p.detail}`,
+    err_encrypt_failed: (p) => `Encryption failed: ${p.detail}`,
+    err_decrypt_failed: (p) => `Decryption failed: ${p.detail}`,
+
+    grpContact: "Contact details", grpBank: "Banking", grpIds: "Identifiers",
+    det_email: "Email addresses", det_phone_fr: "Phone numbers (FR)", det_phone_de: "Phone numbers (DE)",
+    det_iban: "IBAN", det_card: "Payment cards", det_vat: "EU VAT numbers",
+    det_steuer_id: "German tax ID", det_nir: "Social security no. (FR)", det_rvnr: "Social security no. (DE)",
+    det_siret: "SIRET (FR)", det_regex: "Regex pattern", det_masked_value: "Protected value visible elsewhere",
+    sumDetectors: (n) => `${n} detection${en_s(n)}`,
+    propagate: "Also mask these values elsewhere", propagateSub: "A name protected in a column is also masked in comments",
+    readable: "Readable tokens", readableSub: "CONTACT_0042 instead of ENC_9f3a…, clearer for the AI",
+    sumPropagate: "Propagation", sumReadable: "Readable tokens",
+    profile: "Profile", noProfile: "No profile", saveProfile: "Save", deleteProfileAria: "Delete profile",
+    profileApplied: (n, c) => `Profile "${n}" applied: ${c} column${en_s(c)}.`,
+    profileAuto: (n) => `Profile "${n}" applied automatically.`, undoAction: "Undo",
+    saveProfileTitle: "Save profile", saveProfileSub: "Columns are found by their name in future files.",
+    profileName: "Profile name", profileNamePh: "e.g. SAP customer export",
+    profileContent: "Content", profileCols: (n) => `${n} column${en_s(n)}`, profileNone: "No named column",
+    profileNoPositions: "Rows and cells ticked by hand are not saved (they depend on the file).",
+    profileSaved: (n) => `Profile "${n}" saved.`, profileOverwrite: "A profile with this name exists and will be replaced.",
+    deleteProfileTitle: (n) => `Delete profile "${n}"?`, deleteProfileSub: "Files already protected are not affected.",
+    delete: "Delete", profileDeleted: "Profile deleted.", nothingToSave: "Tick at least one column with a header, or an option.",
+    scanTitle: "Pre-send check", scanSub: (n) => `${n} item${en_s(n)} still look${n === 1 ? "s" : ""} like personal data.`,
+    scanWhere: (s, l, h) => `${s} › ${l}${h ? ` (${h})` : ""}`, scanCount: (n) => `${fmt(n)} occurrence${en_s(n)}`,
+    scanFixDetector: (d) => `Enable "${d}"`, scanFixPropagate: `Enable "Also mask these values elsewhere"`,
+    scanBack: "Go back", scanIgnore: "Send anyway", scanFix: "Fix and protect",
+    scanClean: "Pre-send check: no personal data visible outside the protected areas.",
+    scanSkipped: "Pre-send check skipped: personal data may remain visible.",
+    taskScan: (f) => `Checking ${f}`,
+    keyLocked: "Key locked", unlockTitle: "Unlock the key", unlockSub: (n) => `"${n}" is protected by a password.`,
+    password: "Password", unlock: "Unlock", showPassword: "Show password", hidePassword: "Hide password",
+    passwordSection: "Password", pwOn: "On", pwOff: "None", setPassword: "Set a password", changePassword: "Change",
+    removePassword: "Remove", pwTitle: "Key password",
+    pwSub: "Without this password, a copied .key file or a stolen PC is no longer enough to decrypt your data. The key and tokens do not change.",
+    newPassword: "New password", confirmPassword: "Confirm password", pwTooShort: "At least 8 characters.",
+    pwMismatch: "The passwords do not match.", pwSaved: "Password saved.", pwRemoved: "Password removed.",
+    pwOptional: "Password (recommended)", pwOptionalHelp: "Leave empty for a key without a password.",
+    pwForgot: "A forgotten password cannot be recovered: store it in your password manager.",
+    removePwTitle: "Remove the password?", removePwSub: "Anyone who copies the .key file will then be able to decrypt your data.",
+    batchProtect: "Protect a whole folder…", batchRestore: "Restore a whole folder…", batchWithProfile: "Apply to a folder…",
+    batchTitle: "Protect a folder", batchSub: "Every Excel or CSV file in the folder is protected with the chosen profile. You will then pick the source folder and the output folder.",
+    batchNoProfile: "No profile yet. Open a file, select the columns, then click \"Save\" in the Profile section.",
+    chooseFolder: "Choose folder…", batchRestoreTitle: "Restore a folder",
+    batchRestoreSub: "Every file in the folder is restored with the current key and vault. You will then pick the source folder and the output folder.",
+    batchRunning: (i, n) => `File ${Math.min(i + 1, n)} of ${n}`, batchDone: "Processing complete",
+    batchSummary: (ok, n) => `${ok} of ${n} file${en_s(n)} processed.`,
+    batchMasked: (n) => `${fmt(n)} value${en_s(n)} masked`, batchRestored: (n) => `${fmt(n)} value${en_s(n)} restored`,
+    batchLeaks: (n) => `${fmt(n)} possible leak${en_s(n)}`, batchUnknown: (n) => `${fmt(n)} unknown token${en_s(n)}`,
+    openFolder: "Open folder",
+    err_key_locked: "The key is protected by a password.", err_key_bad_password: "Wrong password.",
+    err_profile_name: "Give the profile a name.", err_profile_missing: (p) => `Profile not found: ${p.name}`,
+    err_batch_empty: (p) => `No Excel or CSV file in the folder "${p.name}".`,
+  },
+};
+
+/* ============================================================
+   État
+   ============================================================ */
+const S = {
+  mode: "protect",
+  platform: "darwin",
+  key: null, vault: null,
+  file: null, sheets: [], sheet: 0, headerRow: 1,
+  selection: {},             // nom de feuille -> { cols, rows, cells, ranges }
+  opts: { detectors: [], maskHeaders: true, propagate: true, readable: false, values: [], regexes: [] },
+  profiles: [], profile: "",
+  scanClean: null,
+  view: "original",
+  aiRows: null, aiHeader: null,
+  regexErrors: {},
+  restore: null, rSheet: 0,
+  busy: false,
+  langRequired: false,
+};
+let LANG = "fr";
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const locale = () => LANGS.find((l) => l.code === LANG).locale;
+const fmt = (n) => Number(n).toLocaleString(locale());
+/* Taille de fichier : unités françaises (o, Ko, Mo) ou internationales (B, KB, MB) */
+function fmtSize(b) {
+  const units = LANG === "fr" ? ["o", "Ko", "Mo", "Go"] : ["B", "KB", "MB", "GB"];
+  let i = 0;
+  while (b >= 1024 && i < units.length - 1) { b /= 1024; i++; }
+  return `${i ? b.toLocaleString(locale(), { maximumFractionDigits: 1 }) : b} ${units[i]}`;
+}
+const icon = (id, cls = "") => `<svg class="i ${cls}"><use href="#i-${id}"/></svg>`;
+const flag = (code, cls = "") => `<svg class="flag ${cls}"><use href="#f-${code}"/></svg>`;
+const TOKEN_RE = /ENC_[0-9a-f]{16}/i;
+let api = null;
+
+function t(key, ...args) {
+  const v = I18N[LANG]?.[key] ?? I18N.fr[key] ?? key;
+  return typeof v === "function" ? v(...args) : v;
+}
+/* Message d'erreur venant de Python : traduit via son code, sinon texte d'origine */
+function errText(res) {
+  const v = res.code && I18N[LANG]["err_" + res.code];
+  if (!v) return res.error;
+  return typeof v === "function" ? v(res.params || {}) : v;
+}
+
+/* ============================================================
+   Langue
+   ============================================================ */
+function applyI18n() {
+  document.documentElement.lang = LANG;
+  document.querySelectorAll("[data-i18n]").forEach((el) => (el.textContent = t(el.dataset.i18n)));
+  document.querySelectorAll("[data-i18n-html]").forEach((el) => (el.innerHTML = t(el.dataset.i18nHtml)));
+  document.querySelectorAll("[data-i18n-ph]").forEach((el) => (el.placeholder = t(el.dataset.i18nPh)));
+  document.querySelectorAll("[data-i18n-title]").forEach((el) => (el.title = t(el.dataset.i18nTitle)));
+  document.querySelectorAll("[data-i18n-aria]").forEach((el) => el.setAttribute("aria-label", t(el.dataset.i18nAria)));
+  document.querySelectorAll(".reveal-label").forEach((e) => (e.textContent = revealLabel()));
+  $("#lang-flag").innerHTML = `<use href="#f-${LANG}"/>`;
+  $("#lang-code").textContent = LANG.toUpperCase();
+  $("#lang-menu").innerHTML = LANGS.map((l) =>
+    `<button role="menuitemradio" aria-checked="${l.code === LANG}" onclick="setLang('${l.code}')">${flag(l.code)}${l.name}${icon("check", "sm ck")}</button>`).join("");
+  // parties dynamiques
+  if (S.key) applyState({ platform: S.platform, key: S.key, vault: S.vault, lang: LANG });
+  if (S.file) { renderAll(); $("#f-meta").textContent = `${fmtSize(S.file.bytes)} · ${t("sheetsCount", S.sheets.length)}`; }
+  renderChips("values"); renderChips("regexes");
+  renderDetectors(); renderProfiles();
+  if (!$("#range-err").hidden) $("#range-err").hidden = true;
+  if (S.restore) renderRestoreResult();
+}
+async function setLang(code, silent = false) {
+  LANG = code;
+  closeLangMenu();
+  applyI18n();
+  await api.set_lang(code);
+  if (S.langRequired) { S.langRequired = false; closeModal(); if (S.key?.locked) unlockModal(); }
+  else if (!silent) toast(t("langChanged"), "ok");
+}
+function toggleLangMenu() {
+  const open = !$("#lang-menu").classList.contains("show");
+  $("#lang-menu").classList.toggle("show", open);
+  $("#lang-btn").setAttribute("aria-expanded", open);
+  if (open) $("#lang-menu").querySelector('[aria-checked="true"]')?.focus();
+}
+function closeLangMenu() { $("#lang-menu").classList.remove("show"); $("#lang-btn").setAttribute("aria-expanded", "false"); }
+document.addEventListener("click", (e) => { if (!e.target.closest("#lang")) closeLangMenu(); });
+$("#lang-menu").addEventListener("keydown", (e) => {
+  const items = [...$("#lang-menu").querySelectorAll("button")];
+  const i = items.indexOf(document.activeElement);
+  if (e.key === "ArrowDown") { e.preventDefault(); items[(i + 1) % items.length].focus(); }
+  if (e.key === "ArrowUp") { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
+  if (e.key === "Escape") { closeLangMenu(); $("#lang-btn").focus(); }
+});
+
+/* Premier lancement : choix obligatoire de la langue */
+function langModal() {
+  const guess = (navigator.language || "fr").slice(0, 2);
+  const sub = { fr: I18N.fr.langSub, de: I18N.de.langSub, en: I18N.en.langSub };
+  S.langRequired = true;
+  modal(`
+    <div class="modal-h"><div class="mi"><span class="diamond"></span></div>
+      <div><h2 id="modal-title">Langue · Sprache · Language</h2><p>${esc(sub[guess] || sub.fr)}</p></div></div>
+    <div class="modal-b"><div class="lang-grid">
+      ${LANGS.map((l) => `<button class="lang-choice ${l.code === guess ? "suggested" : ""}" onclick="setLang('${l.code}', true)">
+        ${flag(l.code, "lg")}<div><b>${l.name}</b><span>${esc(I18N[l.code].brandSub)}</span></div>${icon("arrow", "sm arrow")}</button>`).join("")}
+    </div></div>`);
+  const first = $("#modal-box").querySelector(`.lang-choice.suggested`) || $("#modal-box").querySelector(".lang-choice");
+  first?.focus();
+}
+
+/* ============================================================
+   Démarrage
+   ============================================================ */
+async function boot() {
+  if (api) return;
+  api = window.pywebview.api;
+  const st = await api.get_state();
+  S.platform = st.platform;
+  $("#kbd-open").textContent = S.platform === "darwin" ? "⌘O" : "Ctrl+O";
+  if (st.lang) LANG = st.lang;
+  else {
+    const g = (navigator.language || "fr").slice(0, 2);
+    LANG = LANGS.some((l) => l.code === g) ? g : "fr";
+  }
+  applyState(st);
+  applyI18n();
+  syncOpts();
+  await loadProfiles();
+  if (!st.lang) langModal();
+  else if (st.key.locked) unlockModal();
+}
+window.addEventListener("pywebviewready", boot);
+if (window.pywebview?.api) boot();
+
+function revealLabel() {
+  return t(S.platform === "darwin" ? "revealMac" : S.platform === "win32" ? "revealWin" : "revealOther");
+}
+
+function applyState(st) {
+  S.platform = st.platform; S.key = st.key; S.vault = st.vault;
+  const pk = $("#pill-key"), pv = $("#pill-vault");
+  pk.classList.toggle("bad", !st.key.ok && !st.key.locked);
+  pk.classList.toggle("locked", !!st.key.locked);
+  $("#pill-key-t").textContent = st.key.locked ? t("keyLocked") : st.key.ok ? st.key.name : t("noKey");
+  $("#pill-key-s").innerHTML = st.key.locked ? icon("lock", "sm") : st.key.ok ? icon("check", "sm") : "";
+  const v = st.vault;
+  pv.classList.toggle("bad", !v.ok);
+  pv.classList.toggle("warn", v.ok && !v.exists);
+  $("#pill-vault-t").textContent = st.key.locked ? "…" : !v.ok ? t("vaultUnreadable") : v.exists ? t("vaultCount", v.count) : t("vaultEmpty");
+  $("#nokey-banner").classList.toggle("show", !st.key.ok);
+  renderRestoreChecks();
+}
+
+/* ============================================================
+   Navigation
+   ============================================================ */
+function showView(id) {
+  document.querySelectorAll(".view").forEach((v) => v.classList.toggle("active", v.id === id));
+}
+function setMode(m) {
+  S.mode = m;
+  $("#tab-protect").setAttribute("aria-selected", m === "protect");
+  $("#tab-restore").setAttribute("aria-selected", m === "restore");
+  if (m === "protect") showView(S.file ? "v-protect-work" : "v-protect-empty");
+  else showView(S.restore ? "v-restore-result" : "v-restore-empty");
+  hideTip();
+}
+
+/* ============================================================
+   Chargement d'un fichier
+   ============================================================ */
+async function pickAndLoad() {
+  const p = await api.pick_file();
+  if (p) loadFile(p, 1);
+}
+async function loadFile(path, headerRow) {
+  showBusy(t("reading"), null);
+  const res = await api.load(path, headerRow);
+  closeModal();
+  if (res.error) return errorModal(t("openFailed"), errText(res));
+  const sameFile = S.file && S.file.path === res.file.path;
+  S.file = res.file; S.sheets = res.sheets; S.headerRow = headerRow;
+  if (!sameFile) { S.selection = {}; S.sheet = 0; S.view = "original"; S.profile = ""; S.scanClean = null; resetHistory(); setView("original"); }
+  S.sheet = Math.min(S.sheet, S.sheets.length - 1);
+  S.aiRows = null;
+  $("#hdr-row").textContent = headerRow;
+  $("#f-name").textContent = res.file.name;
+  $("#f-name").title = res.file.path;
+  $("#f-meta").textContent = `${fmtSize(res.file.bytes)} · ${t("sheetsCount", S.sheets.length)}`;
+  setMode("protect");
+  renderAll();
+  renderProfiles();
+  if (!sameFile) { const best = bestProfile(); if (best) applyProfile(best, true); }
+}
+function stepHeader(d) {
+  if (!S.file) return;
+  const n = Math.max(1, Math.min(100, S.headerRow + d));
+  if (n !== S.headerRow) loadFile(S.file.path, n);
+}
+
+const cur = () => S.sheets[S.sheet];
+/* Sélection d'une feuille : colonnes, lignes et cellules cochées à la main + plages saisies.
+   Lignes et colonnes numérotées comme dans Excel (1-based). */
+function sel(name = cur()?.name) {
+  return (S.selection[name] ??= { cols: new Set(), rows: new Set(), cells: new Set(), ranges: [] });
+}
+const cellKey = (r, c) => r + "," + c;
+function colLetter(n) { let s = ""; while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; }
+const inRange = (g, r, c) => g.rows.some(([a, b]) => r >= a && r <= b) || g.rects.some(([r1, c1, r2, c2]) => r >= r1 && r <= r2 && c >= c1 && c <= c2);
+const rowMasked = (m, r) => m.rows.has(r) || m.ranges.some((g) => g.rows.some(([a, b]) => r >= a && r <= b));
+const isMasked = (m, r, c) => m.cols.has(c) || m.rows.has(r) || m.cells.has(cellKey(r, c)) || m.ranges.some((g) => inRange(g, r, c));
+const selSize = (m) => m.cols.size + m.rows.size + m.cells.size + m.ranges.length;
+
+function compressRows(set) {
+  const out = [];
+  for (const r of [...set].sort((a, b) => a - b)) {
+    const last = out[out.length - 1];
+    if (last && r === last[1] + 1) last[1] = r; else out.push([r, r]);
+  }
+  return out;
+}
+function selectionPayload(m) {
+  const out = { cols: [...m.cols], rows: compressRows(m.rows), cells: [...m.cells].map((k) => k.split(",").map(Number)), rects: [] };
+  for (const g of m.ranges) { out.rows.push(...g.rows); out.rects.push(...g.rects); }
+  return out;
+}
+
+/* Historique pour ⌘Z / Ctrl+Z */
+const history = [];
+function snapshot() {
+  return JSON.stringify({
+    opts: S.opts,
+    sel: Object.fromEntries(Object.entries(S.selection).map(([k, m]) =>
+      [k, { cols: [...m.cols], rows: [...m.rows], cells: [...m.cells], ranges: m.ranges }])),
+  });
+}
+function pushHistory() { history.push(snapshot()); if (history.length > 100) history.shift(); $("#btn-undo").disabled = false; }
+function resetHistory() { history.length = 0; $("#btn-undo").disabled = true; }
+function undo() {
+  if (!history.length) return;
+  const d = JSON.parse(history.pop());
+  S.selection = {};
+  for (const [k, m] of Object.entries(d.sel)) S.selection[k] = { cols: new Set(m.cols), rows: new Set(m.rows), cells: new Set(m.cells), ranges: m.ranges };
+  S.opts = d.opts;
+  $("#btn-undo").disabled = !history.length;
+  syncOpts();
+  renderAll();
+}
+
+/* ============================================================
+   Rendu
+   ============================================================ */
+function renderAll() { renderTabs(); renderColumns(); renderManual(); renderTable(); renderSummary(); refreshAi(); }
+
+function renderTabs() {
+  $("#sheet-tabs").innerHTML = S.sheets.map((s, i) => {
+    const n = selSize(sel(s.name));
+    return `<button class="tab" role="tab" aria-selected="${i === S.sheet}" onclick="selectSheet(${i})">${icon("sheet", "sm")}${esc(s.name)}${n ? `<span class="cnt">${n}</span>` : ""}</button>`;
+  }).join("");
+}
+function selectSheet(i) { S.sheet = i; S.aiRows = null; lastRow = lastCell = null; renderAll(); }
+
+function renderColumns() {
+  const s = cur(); if (!s) return;
+  const q = $("#col-filter").value.trim().toLowerCase();
+  const m = sel();
+  const cols = s.columns.filter((c) => !q || c.name.toLowerCase().includes(q) || c.letter.toLowerCase() === q);
+  $("#col-list").innerHTML = cols.map((c) => {
+    const on = m.cols.has(c.idx);
+    return `<button class="col-item ${on ? "on" : ""}" role="switch" aria-checked="${on}" onclick="toggleCol(${c.idx})"
+        data-tip-title="${esc(t("example"))}" data-tip="${esc(c.example || t("emptyVal"))}">
+      <span class="col-letter">${c.letter}</span>
+      <span class="col-main">
+        <b class="${c.name ? "" : "none"}">${esc(c.name || t("noHeader"))}</b>
+        <span class="num">${c.suggested ? `<span class="tag-sug">${icon("sparkles")}${t("sensitive")}</span> · ` : ""}${t("colStats", c.unique, c.empty)}</span>
+      </span>
+      <span class="switch"></span>
+    </button>`;
+  }).join("") || `<div class="help" style="padding:8px 12px">${t("noColMatch")}</div>`;
+  $("#sel-count").textContent = m.cols.size;
+  const pending = s.columns.filter((c) => c.suggested && !m.cols.has(c.idx)).length;
+  $("#sug-count").hidden = !pending;
+  $("#sug-count").textContent = pending;
+}
+
+function renderManual() {
+  const m = sel(); if (!cur()) return;
+  const chips = [];
+  for (const [a, b] of compressRows(m.rows))
+    chips.push(`<span class="chip">${icon("rows", "sm")}<span>${t("rowLabel", a, b)}</span><button aria-label="${esc(t("remove"))} ${t("rowLabel", a, b)}" onclick="removeRows(${a},${b})">${icon("x", "sm")}</button></span>`);
+  const boxes = groupCells(m.cells);
+  boxes.slice(0, 12).forEach(([r1, c1, r2, c2]) => {
+    const label = r1 === r2 && c1 === c2 ? `${colLetter(c1)}${r1}` : `${colLetter(c1)}${r1}:${colLetter(c2)}${r2}`;
+    chips.push(`<span class="chip mono">${icon("grid", "sm")}<span>${label}</span><button aria-label="${esc(t("remove"))} ${label}" onclick="removeBox(${r1},${c1},${r2},${c2})">${icon("x", "sm")}</button></span>`);
+  });
+  if (boxes.length > 12)
+    chips.push(`<span class="chip"><span>${t("moreZones", boxes.length - 12)}</span><button aria-label="${esc(t("removeAllCells"))}" onclick="clearCells()">${icon("x", "sm")}</button></span>`);
+  m.ranges.forEach((g, i) =>
+    chips.push(`<span class="chip mono">${icon(g.rects.length ? "grid" : "rows", "sm")}<span>${esc(rangeLabel(g))}</span><button aria-label="${esc(t("remove"))} ${esc(rangeLabel(g))}" onclick="removeRange(${i})">${icon("x", "sm")}</button></span>`));
+  $("#man-list").innerHTML = chips.join("") || `<span class="help" style="margin:0">${t("manEmpty")}</span>`;
+  const n = m.rows.size + m.cells.size + m.ranges.length;
+  $("#man-count").textContent = n;
+  $("#man-clear").hidden = !n;
+}
+
+function renderTable() {
+  const s = cur(); if (!s) return;
+  const m = sel();
+  const ai = S.view === "ai" && S.aiRows;
+  const rows = ai ? S.aiRows : s.rows;
+  const hr = S.headerRow;
+  let h = `<thead><tr><th class="rn">#</th>`;
+  for (const c of s.columns) {
+    const on = m.cols.has(c.idx);
+    const hTok = ai && S.aiHeader && S.aiHeader[c.idx - 1] !== c.name ? S.aiHeader[c.idx - 1] : null;
+    const hTip = hTok ? ` data-tip-title="${esc(t("realHeader"))}" data-tip="${esc(c.name)}"` : "";
+    h += `<th class="${on ? "m" : ""}"${hTip}><button class="th-btn" onclick="toggleCol(${c.idx})" aria-pressed="${on}" title="${esc(t(on ? "colRelease" : "colProtect", c.letter))}">
+      <span class="l">${c.letter}</span><span class="${hTok ? "th-tok" : ""}" style="overflow:hidden;text-overflow:ellipsis">${esc(hTok || c.name)}</span>
+      <svg class="i sm lock" style="margin-left:auto"><use href="#i-${on ? "lock" : "unlock"}"/></svg></button></th>`;
+  }
+  h += `</tr></thead><tbody>`;
+  const parts = [];
+  for (let r = 0; r < rows.length; r++) {
+    const row = rows[r], orig = s.rows[r], R = hr + 1 + r;
+    const rOn = rowMasked(m, R);
+    let tr = `<tr><td class="rn ${rOn ? "m" : ""}"><button class="rn-btn" data-row="${R}" aria-pressed="${rOn}" title="${esc(t(rOn ? "rowRelease" : "rowProtect", R))}">${rOn ? icon("lock", "sm") : ""}${R}</button></td>`;
+    for (let i = 0; i < s.columns.length; i++) {
+      const v = row[i] ?? "", o = orig[i] ?? "", C = i + 1;
+      const cls = [];
+      if (isMasked(m, R, C)) cls.push("m");
+      if (m.cells.has(cellKey(R, C))) cls.push("pick");
+      let content = esc(v);
+      if (v === "") cls.push("empty");
+      let tip = "";
+      if (ai && v !== o) {
+        if (TOKEN_WHOLE.test(v)) cls.push("tok");
+        else content = esc(v).replace(TOKEN_ANY, (tok) => `<span class="t">${tok}</span>`);
+        tip = ` data-tip-title="${esc(t("realValue"))}" data-tip="${esc(o)}"`;
+      }
+      tr += `<td data-r="${R}" data-c="${C}" class="${cls.join(" ")}"${tip}>${content}</td>`;
+    }
+    parts.push(tr + "</tr>");
+  }
+  $("#grid-protect").innerHTML = h + parts.join("") + "</tbody>";
+  const shown = s.rows.length;
+  $("#rows-info").textContent = s.total > shown ? t("rowsShown", shown, s.total) : t("rowsTotal", s.total);
+}
+
+function renderSummary() {
+  const items = [];
+  let nCols = 0, estimate = 0, nRows = 0, nCells = 0;
+  for (const s of S.sheets) {
+    const m = sel(s.name);
+    nCols += m.cols.size;
+    const ratio = s.rows.length ? s.total / s.rows.length : 0;
+    for (const c of s.columns) if (m.cols.has(c.idx)) estimate += c.filled * ratio;
+    nRows += m.rows.size;
+    nCells += m.cells.size;
+    for (const g of m.ranges) {
+      for (const [a, b] of g.rows) nRows += b - a + 1;
+      for (const [r1, c1, r2, c2] of g.rects) nCells += (r2 - r1 + 1) * (c2 - c1 + 1);
+    }
+  }
+  const o = S.opts;
+  const work = nCols || nRows || nCells || o.detectors.length || o.values.length || o.regexes.length;
+  if (nCols) items.push(`${icon("lock")}${t("sumCols", nCols, Math.round(estimate))}`);
+  if (nCols && o.maskHeaders) items.push(`${icon("heading")}${t("sumHeaders")}`);
+  if (nRows) items.push(`${icon("rows")}${t("sumRows", nRows)}`);
+  if (nCells) items.push(`${icon("grid")}${t("sumCells", nCells)}`);
+  if (o.propagate && (nCols || nRows || nCells)) items.push(`${icon("share")}${t("sumPropagate")}`);
+  if (o.detectors.length) items.push(`${icon("id")}${t("sumDetectors", o.detectors.length)}`);
+  if (o.values.length) items.push(`${icon("type")}${t("sumValues", o.values.length)}`);
+  if (o.regexes.length) items.push(`${icon("code")}${t("sumRegex", o.regexes.length)}`);
+  if (work && o.readable) items.push(`${icon("tag")}${t("sumReadable")}`);
+  $("#summary").innerHTML = work ? items.map((x) => `<span class="s-item">${x}</span>`).join("")
+    : `<span class="empty">${t("sumEmpty")}</span>`;
+  $("#btn-encrypt").disabled = !work || S.busy;
+}
+
+/* ============================================================
+   Interactions sélection
+   ============================================================ */
+function toggleCol(idx) {
+  pushHistory();
+  const m = sel();
+  m.cols.has(idx) ? m.cols.delete(idx) : m.cols.add(idx);
+  renderAll();
+}
+function setAll(on) {
+  pushHistory();
+  const m = sel(); m.cols.clear();
+  if (on) cur().columns.forEach((c) => m.cols.add(c.idx));
+  renderAll();
+}
+function suggest() {
+  const m = sel();
+  const sug = cur().columns.filter((c) => c.suggested);
+  if (!sug.length) return toast(t("suggestNone"), "info");
+  pushHistory();
+  sug.forEach((c) => m.cols.add(c.idx));
+  renderAll();
+  toast(t("suggestDone", sug.length), "ok");
+}
+
+/* Lignes : clic = bascule, Maj+clic = plage depuis la dernière ligne cliquée */
+let lastRow = null;
+function toggleRow(r, shift) {
+  pushHistory();
+  const m = sel();
+  if (shift && lastRow !== null) {
+    const on = !m.rows.has(r);
+    for (let x = Math.min(lastRow, r); x <= Math.max(lastRow, r); x++) on ? m.rows.add(x) : m.rows.delete(x);
+  } else m.rows.has(r) ? m.rows.delete(r) : m.rows.add(r);
+  lastRow = r;
+  renderAll();
+}
+function removeRows(a, b) { pushHistory(); const m = sel(); for (let x = a; x <= b; x++) m.rows.delete(x); renderAll(); }
+function removeBox(r1, c1, r2, c2) {
+  pushHistory();
+  const m = sel();
+  for (let r = r1; r <= r2; r++) for (let c = c1; c <= c2; c++) m.cells.delete(cellKey(r, c));
+  renderAll();
+}
+/* Regroupe les cellules cochées en rectangles pleins (affichage compact : B8:D10 au lieu de 9 étiquettes) */
+function groupCells(set) {
+  const left = new Set(set), boxes = [];
+  const sorted = [...set].map((k) => k.split(",").map(Number)).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  for (const [r, c] of sorted) {
+    if (!left.has(cellKey(r, c))) continue;
+    let c2 = c;
+    while (left.has(cellKey(r, c2 + 1))) c2++;
+    let r2 = r;
+    const fullRow = (rr) => { for (let x = c; x <= c2; x++) if (!left.has(cellKey(rr, x))) return false; return true; };
+    while (fullRow(r2 + 1)) r2++;
+    for (let rr = r; rr <= r2; rr++) for (let x = c; x <= c2; x++) left.delete(cellKey(rr, x));
+    boxes.push([r, c, r2, c2]);
+  }
+  return boxes;
+}
+function clearCells() { pushHistory(); sel().cells.clear(); renderAll(); }
+function rangeLabel(g) {
+  if (g.rects.length) { const [r1, c1, r2, c2] = g.rects[0]; return `${colLetter(c1)}${r1}:${colLetter(c2)}${r2}`; }
+  const [a, b] = g.rows[0]; return t("rowLabel", a, b);
+}
+function removeRange(i) { pushHistory(); sel().ranges.splice(i, 1); renderAll(); }
+function clearManual() { pushHistory(); const m = sel(); m.rows.clear(); m.cells.clear(); m.ranges = []; renderAll(); }
+
+/* Cellules : clic = bascule, glisser = zone, Maj+clic = zone depuis la dernière cellule */
+let drag = null, lastCell = null;
+const grid = $("#grid-protect");
+grid.addEventListener("click", (e) => {
+  const b = e.target.closest(".rn-btn");
+  if (b) toggleRow(+b.dataset.row, e.shiftKey);
+});
+grid.addEventListener("mousedown", (e) => {
+  const td = e.target.closest("td[data-c]");
+  if (!td || e.button !== 0) return;
+  e.preventDefault();
+  hideTip();
+  const r = +td.dataset.r, c = +td.dataset.c;
+  const from = e.shiftKey && lastCell ? lastCell : { r, c };
+  drag = { r0: from.r, c0: from.c, r1: r, c1: c, add: e.shiftKey || !sel().cells.has(cellKey(r, c)) };
+  paintDrag();
+  if (e.shiftKey) finishDrag();
+});
+grid.addEventListener("mouseover", (e) => {
+  if (!drag) return;
+  const td = e.target.closest("td[data-c]");
+  if (!td) return;
+  const r = +td.dataset.r, c = +td.dataset.c;
+  if (r !== drag.r1 || c !== drag.c1) { drag.r1 = r; drag.c1 = c; paintDrag(); }
+});
+document.addEventListener("mouseup", () => { if (drag) finishDrag(); });
+function dragBox() {
+  return [Math.min(drag.r0, drag.r1), Math.min(drag.c0, drag.c1), Math.max(drag.r0, drag.r1), Math.max(drag.c0, drag.c1)];
+}
+function paintDrag() {
+  grid.querySelectorAll("td.drag").forEach((t) => t.classList.remove("drag"));
+  const [r1, c1, r2, c2] = dragBox(), first = S.headerRow + 1, body = grid.tBodies[0];
+  for (let r = r1; r <= r2; r++) {
+    const tr = body.rows[r - first];
+    if (!tr) continue;
+    for (let c = c1; c <= c2; c++) tr.cells[c]?.classList.add("drag");
+  }
+}
+function finishDrag() {
+  const [r1, c1, r2, c2] = dragBox(), m = sel();
+  const single = r1 === r2 && c1 === c2;
+  if (single && drag.add && isMasked(m, r1, c1) && !m.cells.has(cellKey(r1, c1))) {
+    toast(t(m.cols.has(c1) ? "alreadyByCol" : "alreadyByRow", `${colLetter(c1)}${r1}`), "info");
+    drag = null; paintDragClear(); return;
+  }
+  pushHistory();
+  for (let r = r1; r <= r2; r++) for (let c = c1; c <= c2; c++) drag.add ? m.cells.add(cellKey(r, c)) : m.cells.delete(cellKey(r, c));
+  lastCell = { r: drag.r1, c: drag.c1 };
+  drag = null;
+  renderAll();
+}
+function paintDragClear() { grid.querySelectorAll("td.drag").forEach((t) => t.classList.remove("drag")); }
+
+/* Plages saisies (validées par Python : B5, A2:C40, 12-30, D:F, nom de colonne) */
+async function addRange() {
+  const input = $("#in-range"), err = $("#range-err");
+  const text = input.value.trim();
+  if (!text || !cur()) return;
+  const res = await api.parse_refs(cur().name, text);
+  if (res.errors.length) {
+    err.hidden = false;
+    err.textContent = t("rangeErr", res.errors.join(", "));
+    input.setAttribute("aria-invalid", "true");
+    return;
+  }
+  err.hidden = true; input.removeAttribute("aria-invalid");
+  pushHistory();
+  const m = sel(), p = res.selection;
+  p.cols.forEach((c) => m.cols.add(c));
+  p.cells.forEach(([r, c]) => m.cells.add(cellKey(r, c)));
+  for (const [a, b] of p.rows) {
+    if (a === b) m.rows.add(a);
+    else m.ranges.push({ rows: [[a, b]], rects: [] });
+  }
+  for (const [r1, c1, r2, c2] of p.rects) m.ranges.push({ rows: [], rects: [[r1, c1, r2, c2]] });
+  input.value = "";
+  renderAll();
+}
+$("#in-range").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); addRange(); } });
+
+function toggleOpt(k) {
+  S.opts[k] = !S.opts[k];
+  syncOpts();
+  renderSummary(); refreshAi();
+}
+function setView(v) {
+  S.view = v;
+  $("#view-orig").setAttribute("aria-selected", v === "original");
+  $("#view-ai").setAttribute("aria-selected", v === "ai");
+  if (v === "ai" && !S.aiRows) refreshAi(true); else renderTable();
+}
+
+/* Aperçu « vue IA » : les jetons sont calculés côté Python (la clé ne quitte jamais Python) */
+let aiTimer = null, aiSeq = 0;
+function refreshAi(now = false) {
+  S.aiRows = null;
+  if (S.view !== "ai") return;
+  clearTimeout(aiTimer);
+  aiTimer = setTimeout(async () => {
+    const s = cur(); if (!s) return;
+    const seq = ++aiSeq;
+    const all = Object.fromEntries(S.sheets.map((x) => [x.name, selectionPayload(sel(x.name))]));
+    const res = await api.preview(s.name, all, S.opts);
+    if (seq !== aiSeq) return;  // une requête plus récente est partie entre-temps
+    S.aiRows = res.rows;
+    S.aiHeader = res.header;
+    S.regexErrors = res.regexErrors || {};
+    renderChips("regexes");
+    renderTable();
+  }, now ? 0 : 120);
+}
+
+
+
+/* Chips (valeurs / regex) */
+function setupChips(key, inputId) {
+  const input = $(inputId);
+  input.addEventListener("keydown", (e) => {
+    if ((e.key === "Enter" || e.key === ",") && input.value.trim()) {
+      e.preventDefault();
+      const v = input.value.trim();
+      if (!S.opts[key].includes(v)) S.opts[key].push(v);
+      input.value = "";
+      if (key === "regexes") validateRegex();
+      renderChips(key); renderSummary(); refreshAi();
+    } else if (e.key === "Backspace" && !input.value && S.opts[key].length) {
+      S.opts[key].pop(); renderChips(key); renderSummary(); refreshAi();
+    }
+  });
+}
+function validateRegex() {
+  S.regexErrors = {};
+  for (const r of S.opts.regexes) { try { new RegExp(r); } catch (e) { S.regexErrors[r] = e.message; } }
+}
+function removeChip(key, i) { S.opts[key].splice(i, 1); if (key === "regexes") validateRegex(); renderChips(key); renderSummary(); refreshAi(); }
+function renderChips(key) {
+  const box = key === "values" ? $("#chips-values") : $("#chips-regex");
+  box.querySelectorAll(".chip").forEach((c) => c.remove());
+  const input = box.querySelector("input");
+  S.opts[key].forEach((v, i) => {
+    const bad = key === "regexes" && S.regexErrors[v];
+    const el = document.createElement("span");
+    el.className = `chip ${key === "regexes" ? "mono" : ""} ${bad ? "err" : ""}`;
+    el.innerHTML = `<span title="${esc(v)}">${esc(v)}</span><button aria-label="${esc(t("remove"))} ${esc(v)}" onclick="event.stopPropagation();removeChip('${key}',${i})">${icon("x", "sm")}</button>`;
+    box.insertBefore(el, input);
+  });
+  if (key === "regexes") {
+    const errs = Object.keys(S.regexErrors);
+    const e = $("#regex-err");
+    e.hidden = !errs.length;
+    e.textContent = errs.length ? t("regexErr", errs[0]) : "";
+  }
+}
+
+/* ============================================================
+   Chiffrement
+   ============================================================ */
+async function doEncrypt(skipScan = false) {
+  if (!requireKey()) return;
+  if (Object.keys(S.regexErrors).length) return errorModal(t("regexModalTitle"), t("regexModalMsg"));
+  const selection = {};
+  for (const [k, m] of Object.entries(S.selection)) if (selSize(m)) selection[k] = selectionPayload(m);
+  if (!skipScan) {
+    setBusy(true);
+    const sc = await api.scan(selection, S.opts, S.headerRow);
+    setBusy(false);
+    closeModal();
+    if (sc.error) return errorModal(t("encryptFailed"), errText(sc));
+    if (sc.findings.length) return leakModal(sc.findings);
+    S.scanClean = true;
+  }
+  setBusy(true);
+  const res = await api.encrypt(selection, S.opts, S.headerRow);
+  setBusy(false);
+  closeModal();
+  if (res.cancelled) return;
+  if (res.error) return errorModal(t("encryptFailed"), errText(res));
+  applyState(res.state);
+  successEncryptModal(res);
+}
+function setBusy(b) { S.busy = b; renderSummary(); }
+
+window.onTaskStart = (kind, name) => showBusy(t({ encrypt: "taskEncrypt", decrypt: "taskDecrypt", scan: "taskScan" }[kind], name), 0);
+window.onTaskProgress = (pct) => {
+  const b = $("#busy-bar");
+  if (b) { b.parentElement.classList.remove("indet"); b.style.width = pct + "%"; $("#busy-pct").textContent = Math.round(pct) + " %"; }
+};
+
+/* ============================================================
+   Déchiffrement
+   ============================================================ */
+async function doDecrypt(path = null) {
+  if (!requireKey()) return;
+  if (!S.vault?.exists) return errorModal(t("vaultMissingTitle"), t("vaultMissingMsg"), [[t("chooseVaultBtn"), "chooseVault()"]]);
+  setBusy(true);
+  const res = await api.decrypt(path);
+  setBusy(false);
+  closeModal();
+  if (res.cancelled) return;
+  if (res.error) return errorModal(t("restoreFailed"), errText(res));
+  const prev = await api.load(res.output.path, 1, false);
+  S.restore = { ...res, sheets: prev.error ? [] : prev.sheets };
+  S.rSheet = 0;
+  renderRestoreResult();
+  setMode("restore");
+  toast(t("restoredToast", res.restored), "ok");
+}
+
+function renderRestoreChecks() {
+  const k = S.key, v = S.vault;
+  if (!k) return;
+  const keyOk = k.ok, vOk = v.ok && v.exists;
+  $("#restore-checks").innerHTML = `
+    <div class="check ${keyOk ? "ok" : "bad"}"><div class="ico">${icon(keyOk ? "check" : "x", "sm")}</div>
+      <div><b>${t("chkKey")}</b><span>${keyOk ? esc(k.name) : t("notLoaded")}</span></div>
+      ${keyOk ? "" : `<button class="btn sm" onclick="openKeyModal()">${t("configure")}</button>`}</div>
+    <div class="check ${vOk ? "ok" : "bad"}"><div class="ico">${icon(vOk ? "check" : "x", "sm")}</div>
+      <div><b>${t("chkVault")}</b><span>${!v.ok ? t("unreadableWithKey") : v.exists ? t("knownValues", v.count) : t("notFound")}</span></div>
+      ${vOk ? "" : `<button class="btn sm" onclick="chooseVault()">${t("choose")}</button>`}</div>`;
+}
+
+function renderRestoreResult() {
+  const r = S.restore;
+  $("#r-title").textContent = t("resultTitle", r.output.name);
+  $("#r-sub").textContent = t("resultSub", r.restored, r.source.name);
+  $("#r-reveal").onclick = () => api.reveal(r.output.path);
+  $("#r-warn").innerHTML = r.unknownCount ? `<div class="warn-box">${icon("alert")}<div>${t("unknownWarn", r.unknownCount)}<br>${r.unknown.slice(0, 6).map((x) => `<code>${esc(x)}</code>`).join(", ")}${r.unknownCount > 6 ? "…" : ""}</div></div>` : "";
+  $("#r-tabs").innerHTML = r.sheets.map((s, i) => `<button class="tab" role="tab" aria-selected="${i === S.rSheet}" onclick="S.rSheet=${i};renderRestoreResult()">${icon("sheet", "sm")}${esc(s.name)}</button>`).join("");
+  const s = r.sheets[S.rSheet];
+  if (!s) { $("#grid-restore").innerHTML = ""; return; }
+  const unk = ` data-tip-title="${esc(t("unknownTipTitle"))}" data-tip="${esc(t("unknownTip"))}"`;
+  const unkSet = new Set(r.unknown.map((x) => x.toUpperCase()));
+  const isUnk = (v) => !!v && [...String(v).matchAll(TOKEN_ANY)].some((m) => unkSet.has(m[0].toUpperCase()));
+  let h = `<thead><tr><th class="rn">#</th>${s.columns.map((c) => `<th class="${isUnk(c.name) ? "unk" : ""}"><div class="th-btn" style="cursor:default"><span class="l">${c.letter}</span>${esc(c.name)}</div></th>`).join("")}</tr></thead><tbody>`;
+  h += s.rows.map((row, ri) => `<tr><td class="rn">${ri + 2}</td>${s.columns.map((_, i) => {
+    const v = row[i];
+    return `<td class="${!v ? "empty" : isUnk(v) ? "unk" : ""}"${isUnk(v) ? unk : ""}>${esc(v)}</td>`;
+  }).join("")}</tr>`).join("");
+  $("#grid-restore").innerHTML = h + "</tbody>";
+  $("#r-rows").textContent = s.total > s.rows.length ? t("rowsShown", s.rows.length, s.total) : t("rowsTotal", s.total);
+}
+
+/* ============================================================
+   Clé & coffre
+   ============================================================ */
+function openKeyModal() {
+  const k = S.key, v = S.vault;
+  const pwState = k.protected ? t("pwOn") : t("pwOff");
+  const pwBtns = k.locked
+    ? `<button class="btn sm" onclick="unlockModal(openKeyModal)">${icon("unlock", "sm")}${t("unlock")}</button>`
+    : !k.ok ? "" : k.protected
+      ? `<button class="btn sm" onclick="passwordModal()">${t("changePassword")}</button><button class="btn sm ghost" onclick="removePasswordModal()">${t("removePassword")}</button>`
+      : `<button class="btn sm" onclick="passwordModal()">${icon("lock", "sm")}${t("setPassword")}</button>`;
+  modal(`
+    <div class="modal-h"><div class="mi ${k.ok || k.locked ? "" : "bad"}">${icon("key", "lg")}</div>
+      <div><h2 id="modal-title">${t("keyModalTitle")}</h2><p>${t("keyModalSub")}</p></div>
+      <button class="btn icon ghost x" onclick="closeModal()" aria-label="${esc(t("close"))}">${icon("x")}</button></div>
+    <div class="modal-b">
+      <div class="key-block">
+        <div class="top">${icon("key", "sm")}<b>${t("key")}</b>${k.locked ? `<span class="badge muted">${t("keyLocked")}</span>` : k.ok ? `<span class="badge ok">${t("loaded")}</span>` : `<span class="badge bad">${t("missing")}</span>`}</div>
+        <div class="key-path">${esc(k.path)}</div>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+          <button class="btn sm secondary" onclick="chooseKey()">${icon("folder", "sm")}${t("chooseKey")}</button>
+          <button class="btn sm" onclick="confirmNewKey()">${icon("plus", "sm")}${t("genKey")}</button>
+        </div>
+        ${k.exists ? `<div style="display:flex;gap:8px;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--color-border);flex-wrap:wrap">
+          ${icon("lock", "sm")}<span style="flex:1;font-size:13px"><b>${t("passwordSection")}</b> · ${pwState}</span>${pwBtns}</div>` : ""}
+      </div>
+      <div class="key-block">
+        <div class="top">${icon("db", "sm")}<b>${t("vault")}</b><span class="badge ${!v.ok ? "bad" : v.exists ? "" : "muted"}">${k.locked ? "…" : !v.ok ? t("unreadable") : v.exists ? t("vaultCount", v.count) : t("willBeCreated")}</span></div>
+        <div class="key-path">${esc(v.path)}</div>
+        <div style="display:flex;gap:8px;margin-top:12px"><button class="btn sm secondary" onclick="chooseVault()">${icon("folder", "sm")}${t("chooseOtherVault")}</button></div>
+      </div>
+      <div class="note info">${icon("info", "sm")}<div>${t("keyNote")}</div></div>
+    </div>`);
+}
+async function chooseKey() {
+  const r = await api.choose_key();
+  if (r.error) return errorModal(t("invalidKey"), errText(r));
+  if (!r.ok) return;
+  applyState(r.state);
+  if (r.state.key.locked) return unlockModal(openKeyModal);
+  openKeyModal(); toast(t("keyLoaded"), "ok");
+}
+function confirmNewKey() {
+  modal(`
+    <div class="modal-h"><div class="mi warn">${icon("alert", "lg")}</div>
+      <div><h2 id="modal-title">${t("newKeyTitle")}</h2><p>${t("newKeySub")}</p></div></div>
+    <div class="modal-b">
+      ${S.key?.exists ? `<div class="note warn" style="margin-bottom:16px">${icon("alert", "sm")}<div>${t("newKeyWarn")}</div></div>` : ""}
+      ${pwField("pw-new", "pwOptional", "new-password")}
+      ${pwField("pw-confirm", "confirmPassword", "new-password")}
+      <div class="help" style="margin-top:-8px">${t("pwOptionalHelp")} ${t("pwForgot")}</div>
+      <div class="field-err" id="pw-err" role="alert" hidden></div>
+    </div>
+    <div class="modal-f"><button class="btn" onclick="${S.key?.exists ? "openKeyModal()" : "closeModal()"}">${t("cancel")}</button><button class="btn primary" onclick="newKey()">${icon("key", "sm")}${t("generate")}</button></div>`);
+  $("#pw-new").focus();
+}
+async function newKey() {
+  const pw = readNewPassword(true);
+  if (pw === null) return;
+  const r = await api.new_key(pw);
+  if (r.error) return errorModal(t("createFailed"), errText(r));
+  if (r.ok) {
+    applyState(r.state);
+    modal(`
+      <div class="modal-h"><div class="mi ok">${icon("check", "lg")}</div>
+        <div><h2 id="modal-title">${t("keyCreated")}</h2><p>${t("keyCreatedSub")}</p></div></div>
+      <div class="modal-b"><div class="key-path">${esc(r.state.key.path)}</div></div>
+      <div class="modal-f"><button class="btn secondary" onclick="api.reveal(${esc(JSON.stringify(r.state.key.path))})">${icon("folder", "sm")}${revealLabel()}</button><button class="btn primary" onclick="closeModal()">${t("gotIt")}</button></div>`);
+  }
+}
+async function chooseVault() {
+  const r = await api.choose_vault();
+  if (r.ok) { applyState(r.state); if ($("#modal").classList.contains("show")) openKeyModal(); toast(t("vaultSelected"), "ok"); }
+}
+function keyRequiredModal() {
+  modal(`
+    <div class="modal-h"><div class="mi warn">${icon("key", "lg")}</div>
+      <div><h2 id="modal-title">${t("keyReqTitle")}</h2><p>${t("keyReqSub")}</p></div>
+      <button class="btn icon ghost x" onclick="closeModal()" aria-label="${esc(t("close"))}">${icon("x")}</button></div>
+    <div class="modal-f"><button class="btn secondary" onclick="chooseKey()">${icon("folder", "sm")}${t("haveKey")}</button><button class="btn primary" onclick="confirmNewKey()">${icon("plus", "sm")}${t("createKey")}</button></div>`);
+}
+
+/* ============================================================
+   Modales génériques
+   ============================================================ */
+let lastFocus = null;
+function modal(html) {
+  if (!$("#modal").classList.contains("show")) lastFocus = document.activeElement;
+  $("#modal-box").className = "modal";
+  $("#modal-box").innerHTML = html;
+  $("#modal").classList.add("show");
+  const box = $("#modal-box");
+  (box.querySelector(".modal-f .btn.primary") || box.querySelector(".modal-f .btn") || box.querySelector("button"))?.focus();
+}
+function closeModal() {
+  if (!$("#modal").classList.contains("show") || S.langRequired) return;
+  $("#modal").classList.remove("show");
+  lastFocus?.focus?.();
+}
+function showBusy(label, pct) {
+  modal(`
+    <div class="modal-h"><div class="mi"><div class="spinner"></div></div>
+      <div style="flex:1"><h2 id="modal-title">${esc(label)}</h2><p>${t("busySub")}</p>
+      <div class="progress ${pct === null ? "indet" : ""}"><div id="busy-bar" style="width:${pct ?? 35}%"></div></div>
+      <small id="busy-pct" class="num" style="color:var(--color-text-secondary)">${pct === null ? "" : "0 %"}</small></div></div>
+    <div style="height:14px"></div>`);
+}
+function errorModal(title, msg, actions = []) {
+  modal(`
+    <div class="modal-h"><div class="mi bad">${icon("alert", "lg")}</div>
+      <div><h2 id="modal-title">${esc(title)}</h2><p>${esc(msg)}</p></div></div>
+    <div class="modal-f">${actions.map(([l, fn]) => `<button class="btn" onclick="${fn}">${esc(l)}</button>`).join("")}<button class="btn primary" onclick="closeModal()">OK</button></div>`);
+}
+function successEncryptModal(r) {
+  const vaultName = r.vault.split(/[\\/]/).pop(), keyName = r.key.split(/[\\/]/).pop();
+  const scan = S.scanClean === true ? `<div class="scan-line">${icon("shield", "sm")}<span>${t("scanClean")}</span></div>`
+    : S.scanClean === false ? `<div class="scan-line warn">${icon("alert", "sm")}<span>${t("scanSkipped")}</span></div>` : "";
+  modal(`
+    <div class="modal-h"><div class="mi ok">${icon("shield", "lg")}</div>
+      <div><h2 id="modal-title">${t("doneTitle")}</h2><p>${t("doneSub")}</p></div>
+      <button class="btn icon ghost x" onclick="closeModal()" aria-label="${esc(t("close"))}">${icon("x")}</button></div>
+    <div class="modal-b">
+      ${scan}
+      <div class="stats">
+        <div class="stat"><b>${fmt(r.masked)}</b><span>${t("statMasked")}</span></div>
+        <div class="stat"><b>${fmt(r.unique)}</b><span>${t("statVault")}</span></div>
+      </div>
+      <div class="file-row send"><div class="ic">${icon("send", "sm")}</div>
+        <div class="meta"><small>${t("toSend")}</small><b title="${esc(r.output.path)}">${esc(r.output.name)}</b></div>
+        <button class="btn sm secondary" onclick="api.reveal(${esc(JSON.stringify(r.output.path))})">${icon("folder", "sm")}${revealLabel()}</button></div>
+      <div class="file-row keep"><div class="ic">${icon("lock", "sm")}</div>
+        <div class="meta"><small>${t("toKeep")}</small><b>${esc(keyName)} · ${esc(vaultName)}</b></div></div>
+    </div>
+    <div class="modal-f">
+      <button class="btn" onclick="closeModal()">${t("close")}</button>
+      <button class="btn primary" onclick="closeModal();setMode('restore')">${t("restoreAi")}${icon("arrow", "sm")}</button>
+    </div>`);
+}
+
+/* ============================================================
+   Détecteurs (liste générée, dans la langue courante)
+   ============================================================ */
+const DETECTOR_GROUPS = [
+  ["grpContact", [["email", "mail", null], ["phone_fr", "phone", "06 12 34 56 78"], ["phone_de", "phone", "+49 151 12345678"]]],
+  ["grpBank", [["iban", "bank", "DE89 3704 0044 0532 0130 00"], ["card", "card", "4111 1111 1111 1111"]]],
+  ["grpIds", [["vat", "id", "DE123456789 · FR40303265045"], ["steuer_id", "id", "86 095 742 719"],
+              ["nir", "id", "1 85 05 78 006 084 91"], ["rvnr", "id", "65 170839 J 003"], ["siret", "id", "732 829 320 00074"]]],
+];
+function renderDetectors() {
+  $("#detector-list").innerHTML = DETECTOR_GROUPS.map(([g, items]) => `<div class="det-group">${t(g)}</div><div class="opt-list">${items.map(([k, ic, ex]) => {
+    const on = S.opts.detectors.includes(k);
+    return `<button class="opt-row ${on ? "on" : ""}" role="switch" aria-checked="${on}" onclick="toggleDetector('${k}')">${icon(ic, "ic")}<div class="txt"><b>${t("det_" + k)}</b><span>${esc(ex ?? t("emailsEx"))}</span></div><div class="switch"></div></button>`;
+  }).join("")}</div>`).join("");
+}
+function toggleDetector(k) {
+  const d = S.opts.detectors, i = d.indexOf(k);
+  i >= 0 ? d.splice(i, 1) : d.push(k);
+  renderDetectors(); renderSummary(); refreshAi();
+}
+/* Recale l'affichage des options sur S.opts (après un profil, une annulation…) */
+function syncOpts() {
+  for (const k of ["maskHeaders", "propagate", "readable"]) {
+    const el = $(`#opt-${k}`);
+    el.classList.toggle("on", !!S.opts[k]);
+    el.setAttribute("aria-checked", !!S.opts[k]);
+  }
+  S.opts.detectors ??= [];
+  renderDetectors();
+  validateRegex(); renderChips("values"); renderChips("regexes");
+}
+
+/* Jetons ENC_… et jetons lisibles PREFIXE_0042 (ou •••• sans clé) */
+const TOKEN_ANY = /ENC_[0-9a-f•]{16}|\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*_(?:\d{4,}|••••)(?![\w•])/gi;
+const TOKEN_WHOLE = new RegExp(`^(?:${TOKEN_ANY.source})$`, "i");
+
+/* ============================================================
+   Clé : déverrouillage et mot de passe
+   ============================================================ */
+function requireKey() {
+  if (S.key?.locked) { unlockModal(); return false; }
+  if (!S.key?.ok) { keyRequiredModal(); return false; }
+  return true;
+}
+function pwField(id, labelKey, autocomplete) {
+  return `<div class="field"><label for="${id}">${t(labelKey)}</label><div class="pw-wrap">
+    <input class="input" type="password" id="${id}" autocomplete="${autocomplete}" spellcheck="false">
+    <button type="button" onclick="togglePw('${id}', this)" aria-label="${esc(t("showPassword"))}">${icon("eye", "sm")}</button></div></div>`;
+}
+function togglePw(id, btn) {
+  const el = $("#" + id), show = el.type === "password";
+  el.type = show ? "text" : "password";
+  btn.innerHTML = icon(show ? "eye-off" : "eye", "sm");
+  btn.setAttribute("aria-label", t(show ? "hidePassword" : "showPassword"));
+}
+/* Lit « nouveau + confirmation ». optional : vide autorisé. Retourne null si invalide (erreur affichée). */
+function readNewPassword(optional) {
+  const a = $("#pw-new").value, b = $("#pw-confirm").value, err = $("#pw-err");
+  const fail = (msg, el) => { err.hidden = false; err.textContent = msg; el.classList.add("err"); el.focus(); return null; };
+  $("#pw-new").classList.remove("err"); $("#pw-confirm").classList.remove("err");
+  if (!a && !b && optional) return "";
+  if (a.length < 8) return fail(t("pwTooShort"), $("#pw-new"));
+  if (a !== b) return fail(t("pwMismatch"), $("#pw-confirm"));
+  return a;
+}
+let unlockThen = null;
+function unlockModal(then = null) {
+  unlockThen = then;
+  modal(`
+    <div class="modal-h"><div class="mi">${icon("lock", "lg")}</div>
+      <div><h2 id="modal-title">${t("unlockTitle")}</h2><p>${esc(t("unlockSub", S.key.name))}</p></div>
+      <button class="btn icon ghost x" onclick="closeModal()" aria-label="${esc(t("close"))}">${icon("x")}</button></div>
+    <div class="modal-b">${pwField("pw-unlock", "password", "current-password")}<div class="field-err" id="pw-err" role="alert" hidden></div></div>
+    <div class="modal-f"><button class="btn secondary" onclick="chooseKey()">${icon("folder", "sm")}${t("chooseKey")}</button><button class="btn primary" id="btn-unlock" onclick="doUnlock()">${icon("unlock", "sm")}${t("unlock")}</button></div>`);
+  $("#pw-unlock").focus();
+  $("#pw-unlock").addEventListener("keydown", (e) => { if (e.key === "Enter") doUnlock(); });
+}
+async function doUnlock() {
+  const input = $("#pw-unlock"), btn = $("#btn-unlock");
+  btn.disabled = true;
+  const r = await api.unlock_key(input.value);
+  btn.disabled = false;
+  if (r.error) {
+    const err = $("#pw-err"); err.hidden = false; err.textContent = errText(r);
+    input.classList.add("err"); input.select();
+    return;
+  }
+  applyState(r.state);
+  closeModal();
+  toast(t("keyLoaded"), "ok");
+  if (S.file) refreshAi();
+  const then = unlockThen; unlockThen = null;
+  then?.();
+}
+function passwordModal() {
+  modal(`
+    <div class="modal-h"><div class="mi">${icon("lock", "lg")}</div>
+      <div><h2 id="modal-title">${t("pwTitle")}</h2><p>${t("pwSub")}</p></div></div>
+    <div class="modal-b">
+      ${pwField("pw-new", "newPassword", "new-password")}
+      ${pwField("pw-confirm", "confirmPassword", "new-password")}
+      <div class="help" style="margin-top:-8px">${t("pwForgot")}</div>
+      <div class="field-err" id="pw-err" role="alert" hidden></div>
+    </div>
+    <div class="modal-f"><button class="btn" onclick="openKeyModal()">${t("cancel")}</button><button class="btn primary" onclick="savePassword()">${icon("lock", "sm")}${t("saveProfile")}</button></div>`);
+  $("#pw-new").focus();
+}
+async function savePassword() {
+  const pw = readNewPassword(false);
+  if (pw === null) return;
+  const r = await api.set_key_password(pw);
+  if (r.error) return errorModal(t("pwTitle"), errText(r));
+  applyState(r.state); openKeyModal(); toast(t("pwSaved"), "ok");
+}
+function removePasswordModal() {
+  modal(`
+    <div class="modal-h"><div class="mi warn">${icon("alert", "lg")}</div>
+      <div><h2 id="modal-title">${t("removePwTitle")}</h2><p>${t("removePwSub")}</p></div></div>
+    <div class="modal-f"><button class="btn" onclick="openKeyModal()">${t("cancel")}</button><button class="btn primary" onclick="removePassword()">${t("removePassword")}</button></div>`);
+}
+async function removePassword() {
+  const r = await api.set_key_password("");
+  if (r.error) return errorModal(t("pwTitle"), errText(r));
+  applyState(r.state); openKeyModal(); toast(t("pwRemoved"), "ok");
+}
+
+/* ============================================================
+   Contrôle avant envoi
+   ============================================================ */
+function leakModal(findings) {
+  S.findings = findings;
+  const total = findings.reduce((a, f) => a + f.count, 0);
+  modal(`
+    <div class="modal-h"><div class="mi warn">${icon("alert", "lg")}</div>
+      <div><h2 id="modal-title">${t("scanTitle")}</h2><p>${t("scanSub", total)}</p></div>
+      <button class="btn icon ghost x" onclick="closeModal()" aria-label="${esc(t("close"))}">${icon("x")}</button></div>
+    <div class="modal-b"><div class="findings">${findings.map((f, i) => {
+      const fix = f.detector === "masked_value" ? t("scanFixPropagate") : f.detector === "regex" ? "" : t("scanFixDetector", t("det_" + f.detector));
+      const where = t("scanWhere", f.sheet === "(csv)" ? "CSV" : f.sheet, f.letter, f.header);
+      return `<label class="finding"><input type="checkbox" data-i="${i}" ${fix ? "checked" : "disabled"}>
+        <div><b>${esc(t("det_" + f.detector))} · ${t("scanCount", f.count)}</b>
+        <span class="where">${esc(where)} · <code>${esc(f.example)}</code></span>
+        ${fix ? `<span class="fix">${esc(fix)}</span>` : ""}</div></label>`;
+    }).join("")}</div></div>
+    <div class="modal-f">
+      <button class="btn ghost" onclick="closeModal()">${t("scanBack")}</button>
+      <button class="btn secondary" onclick="ignoreLeaks()">${t("scanIgnore")}</button>
+      <button class="btn primary" onclick="fixLeaks()">${icon("shield", "sm")}${t("scanFix")}</button>
+    </div>`);
+  $("#modal-box").classList.add("wide");
+}
+function fixLeaks() {
+  pushHistory();
+  let remaining = 0;
+  $("#modal-box").querySelectorAll(".finding input").forEach((cb) => {
+    const f = S.findings[+cb.dataset.i];
+    if (!cb.checked) { remaining++; return; }
+    if (f.detector === "masked_value") S.opts.propagate = true;
+    else if (!S.opts.detectors.includes(f.detector)) S.opts.detectors.push(f.detector);
+  });
+  syncOpts(); renderSummary(); refreshAi();
+  S.scanClean = remaining === 0;
+  closeModal();
+  doEncrypt(true);
+}
+function ignoreLeaks() { S.scanClean = false; closeModal(); doEncrypt(true); }
+
+/* ============================================================
+   Profils
+   ============================================================ */
+function renderProfiles() {
+  const sel_ = $("#profile-select");
+  if (!sel_) return;
+  sel_.innerHTML = `<option value="">${esc(t("noProfile"))}</option>` +
+    S.profiles.map((p) => `<option value="${esc(p.name)}" ${p.name === S.profile ? "selected" : ""}>${esc(p.name)}</option>`).join("");
+  $("#profile-del").hidden = !S.profile;
+  $("#profile-batch").hidden = !S.profile;
+}
+async function loadProfiles() { S.profiles = await api.list_profiles(); renderProfiles(); }
+function headerIndex() {
+  const idx = new Set();
+  for (const s of S.sheets) for (const c of s.columns) if (c.name) idx.add(c.name.trim().toLowerCase());
+  return idx;
+}
+/* Profil dont toutes les colonnes existent dans le fichier (le plus complet l'emporte) */
+function bestProfile() {
+  const h = headerIndex();
+  return S.profiles.filter((p) => p.columns?.length && p.columns.every((c) => h.has(c.trim().toLowerCase())))
+    .sort((a, b) => b.columns.length - a.columns.length)[0] || null;
+}
+function applyProfile(p, auto = false) {
+  pushHistory();
+  const wanted = new Set((p.columns || []).map((c) => c.trim().toLowerCase()));
+  let n = 0;
+  for (const s of S.sheets) {
+    const m = sel(s.name);
+    for (const c of s.columns) if (c.name && wanted.has(c.name.trim().toLowerCase())) { m.cols.add(c.idx); n++; }
+  }
+  S.opts = { ...S.opts, ...(p.opts || {}), detectors: [...(p.opts?.detectors || [])],
+             values: [...(p.values || [])], regexes: [...(p.regexes || [])] };
+  S.profile = p.name;
+  syncOpts(); renderProfiles(); renderAll();
+  if (auto) toast(t("profileAuto", p.name), "info", { label: t("undoAction"), fn: () => { undo(); S.profile = ""; renderProfiles(); } });
+  else toast(t("profileApplied", p.name, n), "ok");
+}
+function onProfileSelect(name) {
+  S.profile = name;
+  const p = S.profiles.find((x) => x.name === name);
+  if (p && S.file) applyProfile(p);
+  renderProfiles();
+}
+function profileColumns() {
+  const names = [];
+  for (const s of S.sheets) {
+    const m = sel(s.name);
+    for (const c of s.columns) if (m.cols.has(c.idx) && c.name && !names.some((x) => x.toLowerCase() === c.name.toLowerCase())) names.push(c.name);
+  }
+  return names;
+}
+function saveProfileModal() {
+  const cols = profileColumns(), o = S.opts;
+  if (!cols.length && !o.detectors.length && !o.values.length && !o.regexes.length) return toast(t("nothingToSave"), "info");
+  const manual = S.sheets.some((s) => { const m = sel(s.name); return m.rows.size || m.cells.size || m.ranges.length; });
+  const suggestion = S.profile || (S.file ? S.file.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ") : "");
+  modal(`
+    <div class="modal-h"><div class="mi">${icon("save", "lg")}</div>
+      <div><h2 id="modal-title">${t("saveProfileTitle")}</h2><p>${t("saveProfileSub")}</p></div></div>
+    <div class="modal-b">
+      <div class="field"><label for="profile-name">${t("profileName")}</label>
+        <input class="input" id="profile-name" value="${esc(suggestion)}" placeholder="${esc(t("profileNamePh"))}" autocomplete="off">
+        <div class="help" id="profile-overwrite" hidden>${t("profileOverwrite")}</div>
+        <div class="field-err" id="profile-err" role="alert" hidden></div></div>
+      <div class="field"><label>${t("profileContent")}</label>
+        <div class="man-list">${cols.length ? cols.map((c) => `<span class="chip">${icon("lock", "sm")}<span>${esc(c)}</span></span>`).join("") : `<span class="help" style="margin:0">${t("profileNone")}</span>`}
+        ${o.detectors.map((d) => `<span class="chip">${icon("id", "sm")}<span>${esc(t("det_" + d))}</span></span>`).join("")}
+        ${o.maskHeaders ? `<span class="chip">${icon("heading", "sm")}<span>${t("sumHeaders")}</span></span>` : ""}
+        ${o.propagate ? `<span class="chip">${icon("share", "sm")}<span>${t("sumPropagate")}</span></span>` : ""}
+        ${o.readable ? `<span class="chip">${icon("tag", "sm")}<span>${t("sumReadable")}</span></span>` : ""}
+        ${o.values.length ? `<span class="chip">${icon("type", "sm")}<span>${t("sumValues", o.values.length)}</span></span>` : ""}
+        ${o.regexes.length ? `<span class="chip">${icon("code", "sm")}<span>${t("sumRegex", o.regexes.length)}</span></span>` : ""}</div>
+        ${manual ? `<div class="help">${t("profileNoPositions")}</div>` : ""}</div>
+    </div>
+    <div class="modal-f"><button class="btn" onclick="closeModal()">${t("cancel")}</button><button class="btn primary" onclick="saveProfile()">${icon("save", "sm")}${t("saveProfile")}</button></div>`);
+  const input = $("#profile-name");
+  const check = () => { $("#profile-overwrite").hidden = !S.profiles.some((p) => p.name.toLowerCase() === input.value.trim().toLowerCase()); };
+  input.addEventListener("input", check);
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") saveProfile(); });
+  check(); input.focus(); input.select();
+}
+async function saveProfile() {
+  const name = $("#profile-name").value.trim();
+  if (!name) { const e = $("#profile-err"); e.hidden = false; e.textContent = t("err_profile_name"); $("#profile-name").classList.add("err"); return; }
+  const o = S.opts;
+  const r = await api.save_profile({ name, columns: profileColumns(), headerRow: S.headerRow, values: o.values, regexes: o.regexes,
+    opts: { detectors: o.detectors, maskHeaders: o.maskHeaders, propagate: o.propagate, readable: o.readable } });
+  if (r.error) return errorModal(t("saveProfileTitle"), errText(r));
+  S.profiles = r.profiles; S.profile = name;
+  renderProfiles(); closeModal(); toast(t("profileSaved", name), "ok");
+}
+function deleteProfileModal() {
+  if (!S.profile) return;
+  modal(`
+    <div class="modal-h"><div class="mi warn">${icon("trash", "lg")}</div>
+      <div><h2 id="modal-title">${esc(t("deleteProfileTitle", S.profile))}</h2><p>${t("deleteProfileSub")}</p></div></div>
+    <div class="modal-f"><button class="btn" onclick="closeModal()">${t("cancel")}</button><button class="btn primary" onclick="deleteProfile()">${icon("trash", "sm")}${t("delete")}</button></div>`);
+}
+async function deleteProfile() {
+  const r = await api.delete_profile(S.profile);
+  S.profiles = r.profiles; S.profile = "";
+  renderProfiles(); closeModal(); toast(t("profileDeleted"), "ok");
+}
+
+/* ============================================================
+   Traitement d'un dossier entier
+   ============================================================ */
+function batchModal() {
+  if (!requireKey()) return;
+  const has = S.profiles.length > 0, cur_ = S.profile || S.profiles[0]?.name || "";
+  modal(`
+    <div class="modal-h"><div class="mi">${icon("folders", "lg")}</div>
+      <div><h2 id="modal-title">${t("batchTitle")}</h2><p>${t("batchSub")}</p></div>
+      <button class="btn icon ghost x" onclick="closeModal()" aria-label="${esc(t("close"))}">${icon("x")}</button></div>
+    <div class="modal-b">${has ? `<div class="field"><label for="batch-profile">${t("profile")}</label><div class="select-wrap">
+      <select class="input" id="batch-profile">${S.profiles.map((p) => `<option value="${esc(p.name)}" ${p.name === cur_ ? "selected" : ""}>${esc(p.name)}</option>`).join("")}</select>
+      ${icon("chevron", "sm")}</div></div>` : `<div class="note info">${icon("info", "sm")}<div>${t("batchNoProfile")}</div></div>`}</div>
+    <div class="modal-f"><button class="btn" onclick="closeModal()">${t("cancel")}</button>
+      <button class="btn primary" ${has ? "" : "disabled"} onclick="runBatch('encrypt', $('#batch-profile').value)">${icon("folder", "sm")}${t("chooseFolder")}</button></div>`);
+}
+function batchRestoreModal() {
+  if (!requireKey()) return;
+  if (!S.vault?.exists) return errorModal(t("vaultMissingTitle"), t("vaultMissingMsg"), [[t("chooseVaultBtn"), "chooseVault()"]]);
+  modal(`
+    <div class="modal-h"><div class="mi">${icon("folders", "lg")}</div>
+      <div><h2 id="modal-title">${t("batchRestoreTitle")}</h2><p>${t("batchRestoreSub")}</p></div>
+      <button class="btn icon ghost x" onclick="closeModal()" aria-label="${esc(t("close"))}">${icon("x")}</button></div>
+    <div class="modal-f"><button class="btn" onclick="closeModal()">${t("cancel")}</button>
+      <button class="btn primary" onclick="runBatch('decrypt')">${icon("folder", "sm")}${t("chooseFolder")}</button></div>`);
+}
+async function runBatch(kind, profile) {
+  closeModal();
+  setBusy(true);
+  const res = kind === "encrypt" ? await api.batch_encrypt(profile) : await api.batch_decrypt();
+  setBusy(false);
+  closeModal();
+  if (res.cancelled) return;
+  if (res.error) return errorModal(kind === "encrypt" ? t("encryptFailed") : t("restoreFailed"), errText(res));
+  if (res.state) applyState(res.state);
+  const ok = res.results.filter((r) => r.ok).length;
+  modal(`
+    <div class="modal-h"><div class="mi ${ok === res.results.length ? "ok" : "warn"}">${icon(ok === res.results.length ? "check" : "alert", "lg")}</div>
+      <div><h2 id="modal-title">${t("batchDone")}</h2><p>${t("batchSummary", ok, res.results.length)}</p></div>
+      <button class="btn icon ghost x" onclick="closeModal()" aria-label="${esc(t("close"))}">${icon("x")}</button></div>
+    <div class="modal-b"><div class="batch-list">${res.results.map((r) => `<div class="batch-item">
+      <div class="st ${r.ok ? "ok" : "bad"}">${icon(r.ok ? "check" : "x", "sm")}</div>
+      <div style="min-width:0;flex:1"><b title="${esc(r.name)}">${esc(r.name)}</b>
+      <span>${!r.ok ? esc(errText(r)) : kind === "encrypt" ? t("batchMasked", r.masked) : t("batchRestored", r.restored)}</span>
+      ${r.ok && r.leaks ? ` · <span class="warn">${t("batchLeaks", r.leaks)}</span>` : ""}
+      ${r.ok && r.unknown ? ` · <span class="warn">${t("batchUnknown", r.unknown)}</span>` : ""}</div></div>`).join("")}</div></div>
+    <div class="modal-f"><button class="btn" onclick="closeModal()">${t("close")}</button>
+      <button class="btn primary" onclick="api.reveal(${esc(JSON.stringify(res.folder))})">${icon("folder", "sm")}${t("openFolder")}</button></div>`);
+  $("#modal-box").classList.add("wide");
+}
+window.onBatchProgress = (i, n, name) => {
+  if (!$("#busy-bar")) showBusy(t("batchRunning", i, n), 0);
+  $("#modal-title").textContent = t("batchRunning", i, n);
+  const p = $("#modal-box").querySelector(".modal-h p");
+  if (p && name) p.textContent = name;
+  window.onTaskProgress(n ? (i / n) * 100 : 100);
+};
+
+/* ============================================================
+   Toasts & infobulles
+   ============================================================ */
+let toastSeq = 0;
+const toastActions = {};
+function toast(msg, kind = "info", action = null) {
+  const el = document.createElement("div");
+  el.className = `toast ${kind}`;
+  const id = ++toastSeq;
+  if (action) toastActions[id] = action.fn;
+  el.innerHTML = `${icon(kind === "ok" ? "check" : kind === "bad" ? "alert" : "info")}<span>${esc(msg)}</span>${action ? `<button class="act" onclick="runToastAction(${id}, this)">${esc(action.label)}</button>` : ""}`;
+  $("#toasts").appendChild(el);
+  setTimeout(() => { el.classList.add("out"); setTimeout(() => { el.remove(); delete toastActions[id]; }, 140); }, action ? 7000 : 4000);
+}
+function runToastAction(id, btn) {
+  toastActions[id]?.();
+  delete toastActions[id];
+  btn.closest(".toast").remove();
+}
+const tip = $("#tip");
+let tipTimer = null;
+document.addEventListener("mouseover", (e) => {
+  const el = e.target.closest("[data-tip]");
+  clearTimeout(tipTimer);
+  if (!el || drag) return hideTip();
+  tipTimer = setTimeout(() => {
+    tip.innerHTML = `<small>${esc(el.dataset.tipTitle || "")}</small><div>${esc(el.dataset.tip)}</div>`;
+    const r = el.getBoundingClientRect();
+    tip.classList.add("show");
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    let x = Math.min(r.left, innerWidth - tw - 12), y = r.bottom + 6;
+    if (y + th > innerHeight - 8) y = r.top - th - 6;
+    tip.style.left = Math.max(8, x) + "px"; tip.style.top = y + "px";
+  }, 250);
+});
+function hideTip() { tip.classList.remove("show"); }
+document.addEventListener("scroll", hideTip, true);
+
+/* ============================================================
+   Glisser-déposer (le chemin complet est fourni par Python)
+   ============================================================ */
+let dragDepth = 0;
+const veil = $("#veil");
+document.addEventListener("dragenter", (e) => {
+  e.preventDefault();
+  if (++dragDepth === 1) {
+    $("#veil-t").textContent = S.mode === "restore" ? t("veilRestore") : t("veilOpen");
+    veil.classList.add("show");
+  }
+});
+document.addEventListener("dragleave", (e) => { e.preventDefault(); if (--dragDepth <= 0) { dragDepth = 0; veil.classList.remove("show"); } });
+document.addEventListener("dragover", (e) => e.preventDefault());
+document.addEventListener("drop", (e) => { e.preventDefault(); dragDepth = 0; veil.classList.remove("show"); });
+window.onFileDropped = (path) => {
+  if (S.busy || S.langRequired) return;
+  if (S.mode === "restore") doDecrypt(path);
+  else loadFile(path, 1);
+};
+
+/* ============================================================
+   Clavier
+   ============================================================ */
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && $("#modal").classList.contains("show") && !S.busy) closeModal();
+  if (S.langRequired) return;
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z" && !e.shiftKey && !e.target.closest("input, textarea") && S.mode === "protect" && !$("#modal").classList.contains("show")) { e.preventDefault(); undo(); }
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "o") { e.preventDefault(); S.mode === "restore" ? doDecrypt() : pickAndLoad(); }
+});
+$("#modal").addEventListener("click", (e) => { if (e.target.id === "modal" && !S.busy) closeModal(); });
+
+setupChips("values", "#in-values");
+setupChips("regexes", "#in-regex");
+
+</script>
+</body>
+</html>

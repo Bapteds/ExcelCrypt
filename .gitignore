@@ -1,0 +1,9 @@
+.venv/
+*.key
+*.vault
+excelcrypt_gui.json
+__pycache__/
+.playwright-mcp/
+excelcrypt_profiles.json
+.DS_Store
+*.tmp
