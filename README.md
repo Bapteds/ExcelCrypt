@@ -39,7 +39,6 @@ Fenêtre native (WKWebView sur macOS, WebView2 sur Windows) qui affiche `ui/inde
 **Options des colonnes protégées**
 - *Masquer aussi les noms de colonnes* : l'en-tête devient un jeton.
 - *Masquer aussi ces valeurs ailleurs* : un nom protégé dans « Contact » est aussi masqué s'il apparaît dans un commentaire, sur n'importe quelle feuille.
-- *Jetons lisibles* : `CONTACT_0042` ou `EMAIL_0017` au lieu de `ENC_9f3a…`. Les numéros sont stables d'un fichier à l'autre, car ils sont stockés dans le coffre.
 
 **Profils** : « Enregistrer » mémorise les colonnes (par leur nom), les détections et les options dans `excelcrypt_profiles.json`. À l'ouverture d'un fichier qui contient toutes les colonnes d'un profil, celui-ci s'applique tout seul, avec la possibilité d'annuler.
 
@@ -59,7 +58,6 @@ python excelcrypt.py encrypt clients.xlsx -c "Nom,Email,IBAN"   # -> clients_chi
 #   --select "B5,A2:C40,12-30,D:F" : cellules, zones, lignes, colonnes
 #   --detect email,phone_fr,phone_de,iban,card,vat,steuer_id,nir,rvnr,siret
 #   --propagate : masque aussi ailleurs les valeurs des cellules masquées
-#   --readable : jetons lisibles (CONTACT_0042)
 python excelcrypt.py scan clients.xlsx -c "Nom"      # contrôle des fuites (code retour 2 si fuite)
 python excelcrypt.py keygen --password               # clé protégée par mot de passe
 python excelcrypt.py passwd                          # ajouter / changer / retirer le mot de passe

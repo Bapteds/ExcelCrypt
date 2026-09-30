@@ -6,9 +6,9 @@
 ## Code source
 | Fichier | Lignes | Rôle | Fiche |
 |---|---|---|---|
-| `excelcrypt.py` | 1280 | Moteur de pseudonymisation + CLI (clés, coffre, jetons, détecteurs, lecture/écriture Excel/CSV) | [files/excelcrypt.py.md](files/excelcrypt.py.md) |
-| `gui.py` | 666 | Application de bureau pywebview : classe `Api` exposée à la page, dialogues, profils, lots | [files/gui.py.md](files/gui.py.md) |
-| `ui/index.html` | 2547 | Interface complète (HTML + CSS + JS inline), i18n fr/de/en | [files/ui-index.html.md](files/ui-index.html.md) |
+| `excelcrypt.py` | 1225 | Moteur de pseudonymisation + CLI (clés, coffre, jetons, détecteurs, lecture/écriture Excel/CSV) | [files/excelcrypt.py.md](files/excelcrypt.py.md) |
+| `gui.py` | 650 | Application de bureau pywebview : classe `Api` exposée à la page, dialogues, profils, lots | [files/gui.py.md](files/gui.py.md) |
+| `ui/index.html` | 2537 | Interface complète (HTML + CSS + JS inline), i18n fr/de/en | [files/ui-index.html.md](files/ui-index.html.md) |
 
 ## Documentation et configuration
 | Fichier | Rôle | Fiche |

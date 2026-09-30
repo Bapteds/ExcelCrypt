@@ -7,7 +7,7 @@ Les équipes veulent confier des fichiers Excel/CSV à une IA (analyse, nettoyag
 
 ## Solution
 Pseudonymisation **réversible** et **déterministe** :
-1. **Protéger** : les valeurs choisies sont remplacées par des jetons (`ENC_9f3a…` ou `CONTACT_0042`). La correspondance reste dans un coffre chiffré local.
+1. **Protéger** : les valeurs choisies sont remplacées par des jetons (`ENC_9f3a…`). La correspondance reste dans un coffre chiffré local.
 2. L'utilisateur envoie le fichier protégé à l'IA, qui peut regrouper, compter et joindre sur les jetons.
 3. **Restaurer** : les jetons présents n'importe où dans le fichier renvoyé sont remplacés par les vraies valeurs, avec leur type d'origine.
 

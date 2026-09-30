@@ -102,7 +102,6 @@ class Api:
         self._sheets: dict[str, dict] = {}  # valeurs brutes (typées) de l'aperçu
         self._header_row = 1
         self._lang: str | None = None       # None = premier lancement : la page demande la langue
-        self._preview_vault: ec.Vault | None = None
         self._busy = threading.Lock()
         self._vault_count: tuple = (None, 0)  # (signature du coffre, nombre d'entrées) pour get_state
         self._load_settings()
@@ -130,7 +129,6 @@ class Api:
     def _load_key(self, password: str | None = None) -> ec.ExcelCryptError | None:
         """Charge la clé. Une clé protégée sans mot de passe reste verrouillée (pas une erreur)."""
         self._keys = None
-        self._preview_vault = None
         if not self._key_path.exists():
             return None
         if ec.key_is_protected(self._key_path) and not password:
@@ -277,7 +275,6 @@ class Api:
         if p.suffix.lower() != ".vault":
             p = p.with_suffix(".vault")  # ouvrir un coffre existant est voulu ici : pas de refus si q existe
         self._vault_path = p
-        self._preview_vault = None
         self._save_settings()
         return {"ok": True, "state": self.get_state()}
 
@@ -386,29 +383,20 @@ class Api:
         keys = [k for k in opts.get("detectors", []) if k in ec.DETECTORS]
         return literals, ec.build_detectors(keys, valid), errors
 
-    def _vault_for_preview(self) -> ec.Vault | None:
-        if self._keys and self._preview_vault is None:
-            try:
-                self._preview_vault = ec.Vault(self._vault_path, self._keys)
-            except ec.ExcelCryptError:
-                return None
-        return self._preview_vault
-
     def preview(self, sheet: str, selections: dict, opts: dict) -> dict:
         """Lignes de l'aperçu telles que l'IA les verra (vrais jetons, sans rien écrire dans le coffre)."""
         s = self._sheets.get(sheet)
         if s is None:
             return {"rows": []}
         literals, detectors, errors = self._mask_options(opts)
-        readable, mask_headers = bool(opts.get("readable")), bool(opts.get("maskHeaders"))
-        vault = self._vault_for_preview() if readable else None
-        tk = ec.Tokenizer(self._keys, vault, readable, dry_run=True)
+        mask_headers = bool(opts.get("maskHeaders"))
+        tk = ec.Tokenizer(self._keys, dry_run=True)
         sels = {name: ec.SheetSelection.from_dict(selections.get(name, {})) for name in self._sheets}
         sel = sels[sheet]
 
         header = None
         if mask_headers:
-            header = [ec.value_as_text(tk.mask_cell(h, True, [], [], None, "HEADER") if i in sel.cols else h)
+            header = [ec.value_as_text(tk.mask_cell(h, True, [], [], None) if i in sel.cols else h)
                       for i, h in enumerate(s["header"], start=1)]
 
         propagation = None
@@ -419,7 +407,7 @@ class Api:
                 for ri, r in enumerate(other["rows"]):
                     for i, v in enumerate(r, start=1):
                         if osel.has(self._header_row + 1 + ri, i):
-                            propagation.add(v, ec.column_prefix(other["header"], i, osel, mask_headers))
+                            propagation.add(v)
             propagation = propagation.compile() or None
 
         ncols = max([len(s["header"])] + [len(r) for r in s["rows"]] or [0])
@@ -429,8 +417,7 @@ class Api:
             row = []
             for i in range(1, ncols + 1):
                 v = r[i - 1] if i - 1 < len(r) else None
-                prefix = ec.column_prefix(s["header"], i, sel, mask_headers)
-                v = tk.mask_cell(v, sel.has(excel_row, i), literals, detectors, propagation, prefix)
+                v = tk.mask_cell(v, sel.has(excel_row, i), literals, detectors, propagation)
                 row.append(ec.value_as_text(v))
             out.append(row)
         return {"rows": out, "header": header, "regexErrors": errors, "hasKey": self._keys is not None}
@@ -498,8 +485,7 @@ class Api:
             self._window.evaluate_js(f"window.onTaskStart('encrypt', {json.dumps(src.name)})")
             res = ec.encrypt_file(src, out, self._keys, self._vault_path, select, literals, detectors,
                                   max(1, int(header_row)), progress=self._progress_cb(),
-                                  mask_headers=bool(opts.get("maskHeaders")), propagate=bool(opts.get("propagate")),
-                                  readable=bool(opts.get("readable")))
+                                  mask_headers=bool(opts.get("maskHeaders")), propagate=bool(opts.get("propagate")))
         except ec.ExcelCryptError as e:
             return from_exc(e)
         except PermissionError:
@@ -508,7 +494,6 @@ class Api:
         except Exception as e:
             return error("encrypt_failed", f"Échec du chiffrement : {e}", detail=str(e))
         finally:
-            self._preview_vault = None
             self._busy.release()
         return {"ok": True, "masked": res["masked"], "unique": res["unique"],
                 "output": file_info(out), "key": str(self._key_path), "vault": str(self._vault_path),
@@ -582,7 +567,7 @@ class Api:
         literals, detectors, _ = self._mask_options(opts)
         cols = profile.get("columns", [])
         hr = max(1, int(profile.get("headerRow", 1)))
-        mh, prop, readable = bool(opts.get("maskHeaders")), bool(opts.get("propagate")), bool(opts.get("readable"))
+        mh, prop = bool(opts.get("maskHeaders")), bool(opts.get("propagate"))
 
         def select(sheet, header):
             return ec.profile_selection(cols, header)
@@ -597,7 +582,7 @@ class Api:
                 try:
                     leaks = ec.scan_file(f, select, literals, detectors, hr, mask_headers=mh, propagate=prop)
                     res = ec.encrypt_file(f, out, self._keys, self._vault_path, select, literals, detectors, hr,
-                                          mask_headers=mh, propagate=prop, readable=readable)
+                                          mask_headers=mh, propagate=prop)
                     results.append({"name": f.name, "ok": True, "masked": res["masked"], "output": out.name,
                                     "leaks": sum(x["count"] for x in leaks)})
                 except ec.ExcelCryptError as e:
@@ -606,7 +591,6 @@ class Api:
                     results.append({"name": f.name, "ok": False} | error("encrypt_failed", str(e), detail=str(e)))
             self._window.evaluate_js(f"window.onBatchProgress({len(files)}, {len(files)}, '')")
         finally:
-            self._preview_vault = None
             self._busy.release()
         return {"ok": True, "kind": "encrypt", "results": results, "folder": str(dst), "state": self.get_state()}
 

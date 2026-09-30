@@ -618,11 +618,6 @@ table.grid { border-collapse: separate; border-spacing: 0; font-size: 13px; min-
               <div class="txt"><b data-i18n="propagate"></b><span data-i18n="propagateSub"></span></div>
               <div class="switch"></div>
             </button>
-            <button class="opt-row" id="opt-readable" onclick="toggleOpt('readable')" role="switch" aria-checked="false">
-              <svg class="i ic"><use href="#i-tag"/></svg>
-              <div class="txt"><b data-i18n="readable"></b><span data-i18n="readableSub"></span></div>
-              <div class="switch"></div>
-            </button>
           </div>
         </div>
 
@@ -773,7 +768,6 @@ table.grid { border-collapse: separate; border-spacing: 0; font-size: 13px; min-
   <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></symbol>
   <symbol id="i-folders" viewBox="0 0 24 24"><path d="M20 17a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3.9a2 2 0 0 1-1.69-.9l-.81-1.2a2 2 0 0 0-1.67-.9H8a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2Z"/><path d="M2 8v11a2 2 0 0 0 2 2h14"/></symbol>
   <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.59 13.51 6.83 3.98"/><path d="m15.41 6.51-6.82 3.98"/></symbol>
-  <symbol id="i-tag" viewBox="0 0 24 24"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></symbol>
   <symbol id="i-card" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/></symbol>
   <symbol id="i-bank" viewBox="0 0 24 24"><path d="M3 22h18"/><path d="M6 18v-7"/><path d="M10 18v-7"/><path d="M14 18v-7"/><path d="M18 18v-7"/><path d="m12 2 8 5H4z"/></symbol>
   <symbol id="i-id" viewBox="0 0 24 24"><path d="M16 10h2"/><path d="M16 14h2"/><path d="M6.17 15a3 3 0 0 1 5.66 0"/><circle cx="9" cy="11" r="2"/><rect x="2" y="5" width="20" height="14" rx="2"/></symbol>
@@ -922,8 +916,7 @@ const I18N = {
     sumDetectors: (n) => `${n} détection${fr_s(n)}`,
     // --- options de colonnes
     propagate: "Masquer aussi ces valeurs ailleurs", propagateSub: "Un nom protégé dans une colonne est aussi masqué dans les commentaires",
-    readable: "Jetons lisibles", readableSub: "CONTACT_0042 au lieu de ENC_9f3a…, plus clair pour l'IA",
-    sumPropagate: "Propagation", sumReadable: "Jetons lisibles",
+    sumPropagate: "Propagation",
     // --- profils
     profile: "Profil", noProfile: "Aucun profil", saveProfile: "Enregistrer", deleteProfileAria: "Supprimer le profil",
     profileApplied: (n, c) => `Profil « ${n} » appliqué : ${c} colonne${fr_s(c)}.`,
@@ -1090,8 +1083,7 @@ const I18N = {
     det_siret: "SIRET (FR)", det_regex: "Regex-Muster", det_masked_value: "Geschützter Wert anderswo sichtbar",
     sumDetectors: (n) => `${n} ${n === 1 ? "Erkennung" : "Erkennungen"}`,
     propagate: "Diese Werte auch anderswo maskieren", propagateSub: "Ein geschützter Name wird auch in Kommentaren maskiert",
-    readable: "Lesbare Token", readableSub: "KONTAKT_0042 statt ENC_9f3a…, verständlicher für die KI",
-    sumPropagate: "Weitergabe", sumReadable: "Lesbare Token",
+    sumPropagate: "Weitergabe",
     profile: "Profil", noProfile: "Kein Profil", saveProfile: "Speichern", deleteProfileAria: "Profil löschen",
     profileApplied: (n, c) => `Profil „${n}“ angewendet: ${c} ${c === 1 ? "Spalte" : "Spalten"}.`,
     profileAuto: (n) => `Profil „${n}“ automatisch angewendet.`, undoAction: "Rückgängig",
@@ -1254,8 +1246,7 @@ const I18N = {
     det_siret: "SIRET (FR)", det_regex: "Regex pattern", det_masked_value: "Protected value visible elsewhere",
     sumDetectors: (n) => `${n} detection${en_s(n)}`,
     propagate: "Also mask these values elsewhere", propagateSub: "A name protected in a column is also masked in comments",
-    readable: "Readable tokens", readableSub: "CONTACT_0042 instead of ENC_9f3a…, clearer for the AI",
-    sumPropagate: "Propagation", sumReadable: "Readable tokens",
+    sumPropagate: "Propagation",
     profile: "Profile", noProfile: "No profile", saveProfile: "Save", deleteProfileAria: "Delete profile",
     profileApplied: (n, c) => `Profile "${n}" applied: ${c} column${en_s(c)}.`,
     profileAuto: (n) => `Profile "${n}" applied automatically.`, undoAction: "Undo",
@@ -1308,7 +1299,7 @@ const S = {
   key: null, vault: null,
   file: null, sheets: [], sheet: 0, headerRow: 1,
   selection: {},             // nom de feuille -> { cols, rows, cells, ranges }
-  opts: { detectors: [], maskHeaders: true, propagate: true, readable: false, values: [], regexes: [] },
+  opts: { detectors: [], maskHeaders: true, propagate: true, values: [], regexes: [] },
   profiles: [], profile: "",
   scanClean: null, findings: [],
   view: "original",
@@ -1674,7 +1665,6 @@ function renderSummary() {
   if (o.detectors.length) items.push(`${icon("id")}${t("sumDetectors", o.detectors.length)}`);
   if (o.values.length) items.push(`${icon("type")}${t("sumValues", o.values.length)}`);
   if (o.regexes.length) items.push(`${icon("code")}${t("sumRegex", o.regexes.length)}`);
-  if (work && o.readable) items.push(`${icon("tag")}${t("sumReadable")}`);
   $("#summary").innerHTML = work ? items.map((x) => `<span class="s-item">${x}</span>`).join("")
     : `<span class="empty">${t("sumEmpty")}</span>`;
   $("#btn-encrypt").disabled = !work || S.busy;
@@ -2161,7 +2151,7 @@ function toggleDetector(k) {
 }
 /* Recale l'affichage des options sur S.opts (après un profil, une annulation…) */
 function syncOpts() {
-  for (const k of ["maskHeaders", "propagate", "readable"]) {
+  for (const k of ["maskHeaders", "propagate"]) {
     const el = $(`#opt-${k}`);
     el.classList.toggle("on", !!S.opts[k]);
     el.setAttribute("aria-checked", !!S.opts[k]);
@@ -2171,8 +2161,8 @@ function syncOpts() {
   validateRegex(); renderChips("values"); renderChips("regexes");
 }
 
-/* Jetons ENC_… et jetons lisibles PREFIXE_0042 (ou •••• sans clé) */
-const TOKEN_ANY = /ENC_[0-9a-f•]{16}|\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*_(?:\d{4,}|••••)(?![\w•])/gi;
+/* Jetons ENC_… (•••• sans clé) et jetons lisibles PREFIXE_0042 des anciennes versions (restauration) */
+const TOKEN_ANY = /ENC_[0-9a-f•]{16}|\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*_\d{4,}(?!\w)/gi;
 const TOKEN_WHOLE = new RegExp(`^(?:${TOKEN_ANY.source})$`, "i");
 
 /* ============================================================
@@ -2339,6 +2329,7 @@ function applyProfile(p, auto = false) {
   }
   S.opts = { ...S.opts, ...(p.opts || {}), detectors: [...(p.opts?.detectors || [])],
              values: [...(p.values || [])], regexes: [...(p.regexes || [])] };
+  delete S.opts.readable;  // option des anciens profils (jetons lisibles, retirés)
   S.profile = p.name;
   syncOpts(); renderProfiles(); renderAll();
   if (auto) toast(t("profileAuto", p.name), "info", { label: t("undoAction"), fn: () => { undo(); S.profile = ""; renderProfiles(); } });
@@ -2376,7 +2367,6 @@ function saveProfileModal() {
         ${o.detectors.map((d) => `<span class="chip">${icon("id", "sm")}<span>${esc(t("det_" + d))}</span></span>`).join("")}
         ${o.maskHeaders ? `<span class="chip">${icon("heading", "sm")}<span>${t("sumHeaders")}</span></span>` : ""}
         ${o.propagate ? `<span class="chip">${icon("share", "sm")}<span>${t("sumPropagate")}</span></span>` : ""}
-        ${o.readable ? `<span class="chip">${icon("tag", "sm")}<span>${t("sumReadable")}</span></span>` : ""}
         ${o.values.length ? `<span class="chip">${icon("type", "sm")}<span>${t("sumValues", o.values.length)}</span></span>` : ""}
         ${o.regexes.length ? `<span class="chip">${icon("code", "sm")}<span>${t("sumRegex", o.regexes.length)}</span></span>` : ""}</div>
         ${manual ? `<div class="help">${t("profileNoPositions")}</div>` : ""}</div>
@@ -2393,7 +2383,7 @@ async function saveProfile() {
   if (!name) { const e = $("#profile-err"); e.hidden = false; e.textContent = t("err_profile_name"); $("#profile-name").classList.add("err"); return; }
   const o = S.opts;
   const r = await api.save_profile({ name, columns: profileColumns(), headerRow: S.headerRow, values: o.values, regexes: o.regexes,
-    opts: { detectors: o.detectors, maskHeaders: o.maskHeaders, propagate: o.propagate, readable: o.readable } });
+    opts: { detectors: o.detectors, maskHeaders: o.maskHeaders, propagate: o.propagate } });
   if (r.error) return errorModal(t("saveProfileTitle"), errText(r));
   S.profiles = r.profiles; S.profile = name;
   renderProfiles(); closeModal(); toast(t("profileSaved", name), "ok");

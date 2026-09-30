@@ -34,13 +34,13 @@
 
 ## Flux « Protéger »
 1. `api.load(path)` → `ec.read_preview` (500 lignes max) + `ec.detect_column` pour les suggestions.
-2. L'utilisateur construit une sélection par feuille (`cols`, `rows`, `cells`, `ranges`, 1-based comme Excel) + options (détecteurs, valeurs, regex, `maskHeaders`, `propagate`, `readable`).
-3. **Vue IA** : `api.preview` → `ec.Tokenizer(dry_run=True)`, le coffre est lu mais jamais écrit.
+2. L'utilisateur construit une sélection par feuille (`cols`, `rows`, `cells`, `ranges`, 1-based comme Excel) + options (détecteurs, valeurs, regex, `maskHeaders`, `propagate`).
+3. **Vue IA** : `api.preview` → `ec.Tokenizer(dry_run=True)`, le coffre n'est ni lu ni écrit.
 4. **Contrôle avant envoi** : `api.scan` → `ec.scan_file` (clé aléatoire, liste des fuites probables).
 5. `api.encrypt` → `ec.encrypt_file` → `_process` : pour chaque cellule, masquage entier ou `mask_text` (propagation → littéraux → détecteurs) ; écriture du fichier puis `Vault.save()`.
 
 ## Flux « Restaurer »
-`api.decrypt` → `ec.decrypt_file` : recherche `ENC_<hex>` et les alias lisibles partout (cellules, en-têtes, noms de feuilles), les remplace par la valeur typée du coffre (nombres et dates retrouvent leur format) et signale les jetons inconnus.
+`api.decrypt` → `ec.decrypt_file` : recherche `ENC_<hex>` et les alias lisibles des anciennes versions partout (cellules, en-têtes, noms de feuilles), les remplace par la valeur typée du coffre (nombres et dates retrouvent leur format) et signale les jetons inconnus.
 
 ## Contrat d'erreur
 Le moteur lève `ExcelCryptError(message_fr, code, **params)`. `gui.py` renvoie `{error, code, params}`. La page traduit avec `errText()` à partir de `I18N[lang]["err_" + code]`. **Nouveau code d'erreur = ajouter `err_<code>` dans fr, de et en.**
@@ -50,7 +50,7 @@ Entrée/sortie : `.xlsx`, `.xlsm` (VBA conservé), `.csv`, `.tsv`, `.txt` (`EXCE
 Clé, coffre : voir `files/excelcrypt.key.md`, `files/excelcrypt.vault.md`, `design/security.md`.
 
 ## Limites connues (choix assumés, non corrigés)
-- Un alias lisible (`CONTACT_0042`) déjà présent dans une cellule d'entrée est re-tokenisé : `is_token` ne reconnaît que `ENC_…`, car un alias ressemble à du texte ordinaire (`ORDER_2024`).
+- Un alias lisible d'une ancienne version (`CONTACT_0042`) déjà présent dans une cellule d'entrée est re-tokenisé : `is_token` ne reconnaît que `ENC_…`, car un alias ressemble à du texte ordinaire (`ORDER_2024`).
 - CSV : tout est texte, donc `"12"` (CSV) et `12` (Excel) donnent deux jetons différents.
 - `scan_file` ignore la ligne d'en-tête et les formules.
 - Polices Inter / JetBrains Mono non embarquées (repli sur les polices système).

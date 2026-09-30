@@ -13,7 +13,7 @@ Sous-clés indépendantes : compromettre l'une ne révèle pas l'autre.
 - **Déterministe**, sans sel par fichier : même valeur + même clé ⇒ même jeton, dans un fichier ou entre fichiers.
 - Le **type** fait partie de l'empreinte : `12` (nombre) ≠ `"12"` (texte).
 - **Sensible à la casse** ; espaces de début/fin retirés pour une cellule masquée en entier.
-- Jetons lisibles (`PREFIXE_0042`) : alias attribués séquentiellement et stockés dans le coffre, donc stables d'un fichier à l'autre avec le même coffre.
+- Jetons lisibles (`PREFIXE_0042`) : **fonction retirée** le 2026-09-30, car ils révélaient la catégorie, le nom de colonne et l'ordre d'apparition. Les alias déjà stockés dans un coffre restent reconnus au déchiffrement ; ne jamais purger `aliases`/`counters` du coffre.
 - Collision (même hex pour deux valeurs) : détectée à l'écriture dans le coffre, le traitement s'arrête.
 
 ## Ce qui est protégé
@@ -25,7 +25,6 @@ Sous-clés indépendantes : compromettre l'une ne révèle pas l'autre.
 - **Liaison** : un destinataire peut suivre un même jeton à travers plusieurs fichiers et envois.
 - **Fréquences** : le nombre d'occurrences de chaque jeton reste visible.
 - **Quasi-identifiants** : les colonnes non masquées (ville, date, métier…) peuvent suffire à ré-identifier.
-- **Jetons lisibles** : ils révèlent la catégorie et l'ordre de première apparition.
 - Au sens du RGPD, les données restent des **données personnelles**.
 
 ## Recommandations

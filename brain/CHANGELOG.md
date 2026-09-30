@@ -5,6 +5,9 @@ Le projet n'est pas sous git : **chaque modification notable doit être ajoutée
 
 ## [Non publié]
 
+### Supprimé
+- 2026-09-30 — Jetons lisibles (`CONTACT_0042`) : option de l'interface, `--readable` en CLI, `Tokenizer(readable=…)`, `Vault.alias`, `slug_prefix`, `column_prefix`, préfixes des `Detector` et de `Propagation`, cache `_preview_vault` de `gui.py`, chaînes `readable`/`readableSub`/`sumReadable` et icône `tag`. Seuls des jetons `ENC_…` sont produits. **Compatibilité** : les alias déjà présents dans un coffre restent restaurés au déchiffrement (`ALIAS_RE`, `Vault.resolve`) et sont conservés à chaque sauvegarde du coffre ; l'option `readable` des anciens profils est ignorée.
+
 ### Corrigé
 - 2026-09-29 — `excelcrypt.py` : `encrypt_file` enregistre le coffre **avant** le fichier de sortie (plus de jetons irrécupérables si l'écriture du coffre échoue).
 - 2026-09-29 — `excelcrypt.py` : `encrypt_file` et `decrypt_file` refusent d'écraser le fichier source (`same_output`).
@@ -32,7 +35,7 @@ Le projet n'est pas sous git : **chaque modification notable doit être ajoutée
 
 ### Moteur et CLI (`excelcrypt.py`)
 - Jetons déterministes `ENC_` + HMAC-SHA256 tronqué à 64 bits, type inclus dans l'empreinte.
-- Jetons lisibles `PREFIXE_0042` stables via le coffre.
+- Jetons lisibles `PREFIXE_0042` stables via le coffre (retirés le 2026-09-30).
 - Coffre AES-256-GCM format v2 (`entries`, `aliases`, `counters`), lecture du format v1.
 - Clé maître avec deux sous-clés HKDF ; protection facultative par mot de passe (Argon2id + AES-256-GCM, `EXCELCRYPT-KEY-2`).
 - Sélection par colonnes, lignes, cellules et plages (`B5`, `A2:C40`, `12-30`, `D:F`, noms de colonnes).

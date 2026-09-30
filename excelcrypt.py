@@ -6,7 +6,7 @@ Principe
 --------
 Chaque valeur sensible est remplacée par un jeton court et déterministe :
 
-    "Jean Dupont"  ->  ENC_9f3a1c0b7d2e4a68      (ou CONTACT_0042 en mode « jetons lisibles »)
+    "Jean Dupont"  ->  ENC_9f3a1c0b7d2e4a68
 
 * Le jeton dérive d'un HMAC-SHA256 de la valeur, calculé avec VOTRE clé secrète :
   sans la clé, impossible de le recalculer ou de le deviner.
@@ -42,7 +42,6 @@ import json
 import os
 import re
 import sys
-import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
@@ -67,7 +66,7 @@ PASSWORD_ENV = "EXCELCRYPT_PASSWORD"
 TOKEN_PREFIX = "ENC_"
 TOKEN_HEX_LEN = 16  # 64 bits -> collisions négligeables même sur des millions de valeurs
 TOKEN_RE = re.compile(rf"{TOKEN_PREFIX}([0-9a-fA-F]{{{TOKEN_HEX_LEN}}})(?![0-9a-fA-F])", re.IGNORECASE)
-# Jeton lisible : PREFIXE_0042 (préfixe en majuscules, au moins 4 chiffres)
+# Jeton lisible : PREFIXE_0042. Plus créé ; reconnu au déchiffrement pour les fichiers et coffres existants.
 ALIAS_RE = re.compile(r"(?<![\w])([A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+)*)_(\d{4,})(?!\w)")
 ANY_TOKEN_RE = re.compile(rf"{TOKEN_RE.pattern}|{ALIAS_RE.pattern}", re.IGNORECASE)
 
@@ -264,7 +263,6 @@ def _siret_ok(s: str) -> bool:
 @dataclass(frozen=True)
 class Detector:
     key: str
-    prefix: str                       # préfixe des jetons lisibles
     regex: re.Pattern
     check: Callable[[str], bool] | None = None
 
@@ -273,27 +271,27 @@ class Detector:
             if self.check is None or self.check(m.group(0)):
                 yield m
 
-    def sub(self, text: str, repl: Callable[[str, str], str]) -> str:
+    def sub(self, text: str, repl: Callable[[str], str]) -> str:
         def one(m):
             v = m.group(0)
-            return repl(v, self.prefix) if self.check is None or self.check(v) else v
+            return repl(v) if self.check is None or self.check(v) else v
         return self.regex.sub(one, text)
 
 
 DETECTORS: dict[str, Detector] = {d.key: d for d in [
-    Detector("email", "EMAIL", re.compile(EMAIL_RE)),
-    Detector("phone_fr", "PHONE", re.compile(PHONE_FR_RE)),
-    Detector("phone_de", "PHONE", re.compile(PHONE_DE_RE)),
-    Detector("iban", "IBAN", re.compile(r"\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]{4}){2,7}(?: ?[A-Z0-9]{1,3})?\b"), _iban_ok),
-    Detector("card", "CARD", re.compile(r"(?<![\w.,+(-])(?<!\d[ -])\d(?:[ -]?\d){12,18}(?![\w.,-])(?![ -]\d)"), _card_ok),
-    Detector("vat", "VAT", re.compile(
+    Detector("email", re.compile(EMAIL_RE)),
+    Detector("phone_fr", re.compile(PHONE_FR_RE)),
+    Detector("phone_de", re.compile(PHONE_DE_RE)),
+    Detector("iban", re.compile(r"\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]{4}){2,7}(?: ?[A-Z0-9]{1,3})?\b"), _iban_ok),
+    Detector("card", re.compile(r"(?<![\w.,+(-])(?<!\d[ -])\d(?:[ -]?\d){12,18}(?![\w.,-])(?![ -]\d)"), _card_ok),
+    Detector("vat", re.compile(
         r"\b(?:DE ?\d{3} ?\d{3} ?\d{3}|FR ?[0-9A-HJ-NP-Z]{2} ?\d{3} ?\d{3} ?\d{3}|ATU ?\d{8}|IT ?\d{11}|"
         r"ES ?[0-9A-Z]\d{7}[0-9A-Z]|NL ?\d{9}B\d{2}|BE ?0?\d{9}|LU ?\d{8}|CHE[- ]?\d{3}\.?\d{3}\.?\d{3})\b")),
-    Detector("steuer_id", "TAXID", re.compile(r"(?<![\w.,+(-])(?<!\d[ -])[1-9]\d ?\d{3} ?\d{3} ?\d{3}(?![\w.,-])(?![ -]\d)"),
+    Detector("steuer_id", re.compile(r"(?<![\w.,+(-])(?<!\d[ -])[1-9]\d ?\d{3} ?\d{3} ?\d{3}(?![\w.,-])(?![ -]\d)"),
              _steuer_id_ok),
-    Detector("nir", "SSN", re.compile(r"\b[12] ?\d{2} ?\d{2} ?(?:\d{2}|2[AB]) ?\d{3} ?\d{3} ?\d{2}\b", re.IGNORECASE), _nir_ok),
-    Detector("rvnr", "SSN", re.compile(r"\b\d{2} ?\d{6} ?[A-Z] ?\d{3}\b"), _rvnr_ok),
-    Detector("siret", "SIRET", re.compile(r"(?<![\w.,+(-])(?<!\d[ -])\d{3} ?\d{3} ?\d{3} ?\d{5}(?![\w.,-])(?![ -]\d)"), _siret_ok),
+    Detector("nir", re.compile(r"\b[12] ?\d{2} ?\d{2} ?(?:\d{2}|2[AB]) ?\d{3} ?\d{3} ?\d{2}\b", re.IGNORECASE), _nir_ok),
+    Detector("rvnr", re.compile(r"\b\d{2} ?\d{6} ?[A-Z] ?\d{3}\b"), _rvnr_ok),
+    Detector("siret", re.compile(r"(?<![\w.,+(-])(?<!\d[ -])\d{3} ?\d{3} ?\d{3} ?\d{5}(?![\w.,-])(?![ -]\d)"), _siret_ok),
 ]}
 
 
@@ -306,7 +304,7 @@ def build_detectors(keys: list[str] | None = None, regexes: list[str] | None = N
         out.append(DETECTORS[k])
     for r in regexes or []:
         try:
-            out.append(Detector("regex", "PATTERN", re.compile(r)))
+            out.append(Detector("regex", re.compile(r)))
         except re.error as e:
             raise ExcelCryptError(f"Regex invalide '{r}' : {e}", "regex_invalid", pattern=r)
     return out
@@ -357,19 +355,19 @@ class Propagation:
     """Valeurs des cellules masquées, à masquer aussi partout où elles apparaissent dans le texte."""
 
     def __init__(self):
-        self.prefix_of: dict[str, str] = {}   # valeur (casefold) -> préfixe de jeton lisible
+        self.values: set[str] = set()   # valeurs (casefold)
         self.regex: re.Pattern | None = None
 
-    def add(self, value, prefix: str) -> None:
+    def add(self, value) -> None:
         if not isinstance(value, str):
             return
         v = value.strip()
         if len(v) < PROPAGATE_MIN_LEN or is_token(v) or is_formula(v):
             return
-        self.prefix_of.setdefault(v.casefold(), prefix)
+        self.values.add(v.casefold())
 
     def compile(self) -> "Propagation":
-        words = sorted(self.prefix_of, key=len, reverse=True)
+        words = sorted(self.values, key=len, reverse=True)
         self.regex = re.compile(r"(?<!\w)(?:" + _trie_regex(words) + r")(?!\w)", re.IGNORECASE) if words else None
         return self
 
@@ -489,14 +487,14 @@ def load_key(key_arg: str | None, password: str | None = None) -> Keys:
 
 
 # --------------------------------------------------------------------------- #
-# Coffre chiffré (jeton -> valeur d'origine typée, + jetons lisibles)
+# Coffre chiffré (jeton -> valeur d'origine typée, + alias lisibles des anciennes versions)
 # --------------------------------------------------------------------------- #
 class Vault:
     def __init__(self, path: Path, keys: Keys):
         self.path = Path(path)
         self.aes = AESGCM(keys.vault_key)
         self.entries: dict[str, dict] = {}   # hex -> valeur typée
-        self.aliases: dict[str, str] = {}    # hex -> jeton lisible (PREFIXE_0042)
+        self.aliases: dict[str, str] = {}    # hex -> jeton lisible (PREFIXE_0042) des anciennes versions : lu et conservé
         self.counters: dict[str, int] = {}   # préfixe -> dernier numéro attribué
         self.by_alias: dict[str, str] = {}   # jeton lisible -> hex
         self.dirty = False
@@ -539,26 +537,6 @@ class Vault:
         elif existing != packed and unpack_value(existing) != value:
             # Deux valeurs différentes -> même jeton : quasi impossible, mais on refuse net.
             raise ExcelCryptError(f"Collision de jeton détectée ({token_hex}). Abandon.", "collision", token=token_hex)
-
-    def alias(self, token_hex: str, prefix: str, overlay: dict | None = None) -> str:
-        """Jeton lisible stable pour une valeur. overlay : attribution provisoire (aperçu), rien n'est écrit."""
-        if token_hex in self.aliases:
-            return self.aliases[token_hex]
-        if overlay is not None:
-            if token_hex in overlay["aliases"]:
-                return overlay["aliases"][token_hex]
-            n = overlay["counters"].get(prefix, self.counters.get(prefix, 0)) + 1
-            overlay["counters"][prefix] = n
-            overlay["aliases"][token_hex] = a = f"{prefix}_{n:04d}"
-            return a
-        n = self.counters.get(prefix, 0) + 1
-        while f"{prefix}_{n:04d}" in self.by_alias:
-            n += 1
-        self.counters[prefix] = n
-        a = f"{prefix}_{n:04d}"
-        self.aliases[token_hex], self.by_alias[a] = a, token_hex
-        self.dirty = True
-        return a
 
     def get(self, token_hex: str):
         packed = self.entries.get(token_hex.lower())
@@ -618,60 +596,32 @@ def value_as_text(v) -> str:
     return str(v)
 
 
-def slug_prefix(header, letter: str) -> str:
-    """Préfixe de jeton lisible tiré d'un en-tête : « Date de naissance » -> DATE_DE_NAISSANCE."""
-    s = unicodedata.normalize("NFKD", str(header or "")).encode("ascii", "ignore").decode()
-    s = re.sub(r"[^A-Za-z0-9]+", "_", s).strip("_").upper()[:20].rstrip("_")
-    if not s:
-        return f"COL_{letter}"
-    return s if s[0].isalpha() else f"C{s}"
-
-
-def column_prefix(header: list, c: int, sel: SheetSelection, mask_headers: bool) -> str:
-    """Préfixe des jetons lisibles d'une colonne. Si son en-tête est masqué, on ne le révèle pas : COL_C."""
-    letter = get_column_letter(c)
-    if mask_headers and c in sel.cols:
-        return f"COL_{letter}"
-    return slug_prefix(header[c - 1] if c - 1 < len(header) else None, letter)
-
-
 # --------------------------------------------------------------------------- #
 # Pseudonymisation
 # --------------------------------------------------------------------------- #
 class Tokenizer:
     """
     Calcule les jetons.
-    vault=None : aperçu sans coffre. dry_run=True : le coffre est lu mais jamais modifié.
-    readable=True : jetons lisibles PREFIXE_0042 au lieu de ENC_….
+    vault=None : aperçu sans coffre. dry_run=True : le coffre n'est jamais modifié.
     """
 
-    def __init__(self, keys: Keys | None, vault: Vault | None = None, readable: bool = False, dry_run: bool = False):
+    def __init__(self, keys: Keys | None, vault: Vault | None = None, dry_run: bool = False):
         self.key = keys.token_key if keys else None
         self.vault = vault
-        self.readable = readable
         self.dry_run = dry_run
-        self.overlay = {"aliases": {}, "counters": {}}
         self.count = 0
 
-    def token(self, value, prefix: str = "VALUE") -> str:
+    def token(self, value) -> str:
         self.count += 1
         if self.key is None:  # aperçu sans clé
-            return f"{prefix}_••••" if self.readable else TOKEN_PREFIX + "•" * TOKEN_HEX_LEN
+            return TOKEN_PREFIX + "•" * TOKEN_HEX_LEN
         # Le type fait partie de l'empreinte : 12 (nombre) et "12" (texte) restent distincts.
         packed = pack_value(value)
         material = f"{packed['t']}\x1f{packed['v']}".encode("utf-8")
         h = hmac.new(self.key, material, hashlib.sha256).hexdigest()[:TOKEN_HEX_LEN]
         if self.vault is not None and not self.dry_run:
             self.vault.put(h, value)
-        if not self.readable:
-            return TOKEN_PREFIX + h
-        if self.vault is None:
-            if h not in self.overlay["aliases"]:
-                n = self.overlay["counters"].get(prefix, 0) + 1
-                self.overlay["counters"][prefix] = n
-                self.overlay["aliases"][h] = f"{prefix}_{n:04d}"
-            return self.overlay["aliases"][h]
-        return self.vault.alias(h, prefix, self.overlay if self.dry_run else None)
+        return TOKEN_PREFIX + h
 
     def mask_text(self, text: str, literals: list[str], detectors: list[Detector],
                   propagation: Propagation | None = None) -> str:
@@ -687,22 +637,22 @@ class Tokenizer:
         text = TOKEN_RE.sub(lambda m: hold(m.group(0)), text)
         if propagation:
             text = propagation.regex.sub(
-                lambda m: hold(self.token(m.group(0), propagation.prefix_of.get(m.group(0).casefold(), "VALUE"))), text)
+                lambda m: hold(self.token(m.group(0))), text)
         for lit in literals:
             if lit and lit in text:
-                text = text.replace(lit, hold(self.token(lit, "VALUE")))
+                text = text.replace(lit, hold(self.token(lit)))
         for d in detectors:
-            text = d.sub(text, lambda v, p: hold(self.token(v, p)))
+            text = d.sub(text, lambda v: hold(self.token(v)))
         if not held:
             return text
         return _HOLD_RE.sub(lambda m: held[int("".join(str(ord(c) - 0xE000) for c in m.group(1)))], text)
 
     def mask_cell(self, value, masked: bool, literals: list[str], detectors: list[Detector],
-                  propagation: Propagation | None = None, prefix: str = "VALUE"):
+                  propagation: Propagation | None = None):
         if value is None or value == "" or is_formula(value) or is_token(value):
             return value
         if masked:
-            return self.token(value.strip() if isinstance(value, str) else value, prefix)
+            return self.token(value.strip() if isinstance(value, str) else value)
         if isinstance(value, str) and (literals or detectors or propagation):
             return self.mask_text(value, literals, detectors, propagation)
         return value
@@ -891,13 +841,13 @@ def _sheets(fmt: str, doc, columns: ColumnSelector, hr: int):
 
 def _set_cell(cell, v) -> None:
     cell.value = v
-    if isinstance(v, str) and (v.startswith(TOKEN_PREFIX) or ALIAS_RE.fullmatch(v)):
+    if isinstance(v, str) and v.startswith(TOKEN_PREFIX):
         cell.number_format = "@"  # sinon une colonne date afficherait mal le jeton
 
 
 def _process(path: Path, keys: Keys | None, vault: Vault | None, columns: ColumnSelector,
              literals, detectors, header_row: int, progress, log, mask_headers: bool,
-             propagate: bool, readable: bool, scan: bool):
+             propagate: bool, scan: bool):
     """
     Passe commune au chiffrement et au contrôle des fuites.
     1re passe (si propagate) : relève les valeurs des cellules masquées.
@@ -907,8 +857,8 @@ def _process(path: Path, keys: Keys | None, vault: Vault | None, columns: Column
     fmt = check_format(path)
     hr = max(1, int(header_row))
     literals = sorted(set(literals or []), key=len, reverse=True)
-    detectors = [d if isinstance(d, Detector) else Detector("regex", "PATTERN", d) for d in (detectors or [])]
-    tk = Tokenizer(keys or Keys(os.urandom(32)), None if scan else vault, readable, dry_run=scan)
+    detectors = [d if isinstance(d, Detector) else Detector("regex", d) for d in (detectors or [])]
+    tk = Tokenizer(keys or Keys(os.urandom(32)), None if scan else vault, dry_run=scan)
     if fmt == "csv":
         rows, dialect, enc = read_csv(path)
         doc, total = rows, len(rows)
@@ -921,9 +871,6 @@ def _process(path: Path, keys: Keys | None, vault: Vault | None, columns: Column
     total *= passes
     done = 0
 
-    def prefix_for(sh: _Sheet, c: int) -> str:
-        return column_prefix(sh.header, c, sh.sel, mask_headers)
-
     propagation = Propagation()
     if propagate or scan:  # en contrôle, on relève toujours les valeurs masquées pour repérer celles restées visibles
         for sh in sheets:
@@ -931,7 +878,7 @@ def _process(path: Path, keys: Keys | None, vault: Vault | None, columns: Column
                 continue
             for r, c, get, _ in sh.cells():
                 if sh.sel.has(r, c):
-                    propagation.add(get(), prefix_for(sh, c))
+                    propagation.add(get())
                 done += 1
                 if progress and done % 5000 == 0:
                     progress(done, total)
@@ -949,11 +896,11 @@ def _process(path: Path, keys: Keys | None, vault: Vault | None, columns: Column
                 for c in sorted(sh.sel.cols):
                     if c in sh.header_cells:
                         get, put = sh.header_cells[c]
-                        put(tk.mask_cell(get(), True, [], [], None, "HEADER"))
+                        put(tk.mask_cell(get(), True, [], [], None))
         for r, c, get, put in sh.cells():
             v = get()
             masked = sh.sel.has(r, c)
-            new = tk.mask_cell(v, masked, literals, detectors, active_propagation, prefix_for(sh, c))
+            new = tk.mask_cell(v, masked, literals, detectors, active_propagation)
             if scan:
                 if not masked and isinstance(new, str) and new:
                     _record_leaks(findings, sh, c, new, all_detectors, None if propagate else propagation)
@@ -987,16 +934,15 @@ def encrypt_file(path: Path, out: Path, keys: Keys, vault_path: Path, columns: C
                  literals: list[str] | None = None, patterns: list | None = None,
                  header_row: int = 1, progress: Progress | None = None,
                  log: Callable[[str], None] = lambda s: None, mask_headers: bool = False,
-                 propagate: bool = False, readable: bool = False) -> dict:
+                 propagate: bool = False) -> dict:
     """
     mask_headers : remplace aussi l'en-tête des colonnes entièrement masquées par un jeton.
     propagate    : masque aussi, partout dans le texte, les valeurs des cellules masquées.
-    readable     : jetons lisibles (CONTACT_0042) au lieu de ENC_….
     """
     _check_output(path, out)
     vault = Vault(Path(vault_path), keys)
     fmt, doc, rows, dialect, enc, tk = _process(path, keys, vault, columns, literals, patterns, header_row,
-                                                progress, log, mask_headers, propagate, readable, scan=False)
+                                                progress, log, mask_headers, propagate, scan=False)
     out = Path(out)
     # Le coffre d'abord : si l'écriture du fichier échoue, le coffre contient seulement des entrées en trop
     # (sans conséquence) ; dans l'ordre inverse, le fichier produit contiendrait des jetons irrécupérables.
@@ -1022,7 +968,7 @@ def scan_file(path: Path, columns: ColumnSelector, literals: list[str] | None = 
     Retourne une liste de {sheet, col, letter, header, detector, count, example}.
     """
     return _process(path, None, None, columns, literals, patterns, header_row, progress,
-                    lambda s: None, mask_headers, propagate, False, scan=True)
+                    lambda s: None, mask_headers, propagate, scan=True)
 
 
 def decrypt_file(path: Path, out: Path, keys: Keys, vault_path: Path,
@@ -1161,7 +1107,7 @@ def cmd_encrypt(args) -> None:
     out = Path(args.output) if args.output else default_output(path, "chiffre")
     res = encrypt_file(path, out, keys, Path(args.vault), select, literals, detectors, args.header_row,
                        log=lambda s: print("  " + s), mask_headers=args.mask_headers,
-                       propagate=args.propagate, readable=args.readable)
+                       propagate=args.propagate)
     print(f"\n{res['masked']} valeurs masquées ({res['unique']} valeurs uniques dans le coffre).")
     print(f"Fichier à envoyer à l'IA : {res['output']}")
     print(f"Coffre (à garder avec la clé, NE PAS envoyer) : {res['vault']}")
@@ -1251,7 +1197,6 @@ def main() -> None:
 
     e = sub.add_parser("encrypt", parents=[common, select], help="masque les données sensibles")
     e.add_argument("file")
-    e.add_argument("--readable", action="store_true", help="jetons lisibles (CONTACT_0042) au lieu de ENC_…")
 
     d = sub.add_parser("decrypt", parents=[common], help="restaure les vraies valeurs")
     d.add_argument("file")
